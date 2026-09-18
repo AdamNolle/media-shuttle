@@ -41,23 +41,46 @@
             </Border>
 
             <Button x:Name="SettingsButton" Grid.Column="4" Width="42" Height="40" Padding="0" Margin="10,0,0,0" VerticalAlignment="Center" ToolTipService.ToolTip="Settings" AutomationProperties.Name="Open settings">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Width="310" Spacing="16" Padding="4,5,4,4">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="Transfer behavior and appearance" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <StackPanel Spacing="7">
+                                <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabelStyle}" />
+                                <ComboBox x:Name="ThemeComboBox" HorizontalAlignment="Stretch" AutomationProperties.Name="Application theme">
+                                    <ComboBoxItem Content="Use Windows setting" Tag="System" />
+                                    <ComboBoxItem Content="Light" Tag="Light" />
+                                    <ComboBoxItem Content="Dark" Tag="Dark" />
+                                </ComboBox>
+                            </StackPanel>
+                            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <ToggleSwitch x:Name="AutoTransferToggle" Header="Automatic transfer" OffContent="Off" OnContent="On" />
+                            <ToggleSwitch x:Name="GroupByDateToggle" Header="Date folders" OffContent="Flat folders" OnContent="YYYY-MM-DD" />
+                            <ToggleSwitch x:Name="NotificationsToggle" Header="Completion notifications" OffContent="Off" OnContent="On" />
+                            <ToggleSwitch x:Name="StartupToggle" Header="Start with Windows" OffContent="Off" OnContent="On" />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
                 <FontIcon Glyph="&#xE713;" FontSize="16" />
             </Button>
         </Grid>
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid MaxWidth="1240" MinWidth="820" Padding="30,26,30,32" ColumnSpacing="26" HorizontalAlignment="Stretch">
+            <Grid MaxWidth="1220" MinWidth="820" Padding="24,22,24,26" ColumnSpacing="22" HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="286" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource PanelBorderStyle}" Padding="22">
+                <Border Grid.Column="0" Style="{StaticResource PanelBorderStyle}" Padding="20" VerticalAlignment="Top">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
+                            <RowDefinition Height="18" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
@@ -127,7 +150,7 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Column="1" RowSpacing="21">
+                    <Grid Grid.Column="1" RowSpacing="18">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -194,39 +217,16 @@
                         </Grid>
                     </Border>
 
-                    <Grid Grid.Row="3" ColumnSpacing="21">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="320" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="9">
-                            <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
-                            <ListView x:Name="ActivityList" Height="154" SelectionMode="None" IsItemClickEnabled="False">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" LineHeight="18" TextWrapping="Wrap" Margin="0,3" />
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </StackPanel>
-
-                        <Expander x:Name="SettingsExpander" Grid.Column="1" Header="Settings" HorizontalAlignment="Stretch">
-                            <StackPanel Spacing="15" Padding="4,13,4,6">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabelStyle}" />
-                                    <ComboBox x:Name="ThemeComboBox" HorizontalAlignment="Stretch" AutomationProperties.Name="Application theme">
-                                        <ComboBoxItem Content="Use Windows setting" Tag="System" />
-                                        <ComboBoxItem Content="Light" Tag="Light" />
-                                        <ComboBoxItem Content="Dark" Tag="Dark" />
-                                    </ComboBox>
-                                </StackPanel>
-                                <ToggleSwitch x:Name="AutoTransferToggle" Header="Automatic transfer" OffContent="Off" OnContent="On" />
-                                <ToggleSwitch x:Name="GroupByDateToggle" Header="Date folders" OffContent="Flat folders" OnContent="YYYY-MM-DD" />
-                                <ToggleSwitch x:Name="NotificationsToggle" Header="Completion notifications" OffContent="Off" OnContent="On" />
-                                <ToggleSwitch x:Name="StartupToggle" Header="Start with Windows" OffContent="Off" OnContent="On" />
-                            </StackPanel>
-                        </Expander>
-                    </Grid>
+                    <StackPanel Grid.Row="3" Spacing="9">
+                        <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
+                        <ListView x:Name="ActivityList" Height="124" SelectionMode="None" IsItemClickEnabled="False">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" LineHeight="18" TextWrapping="Wrap" Margin="0,3" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
 
                     <Border Grid.Row="4" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource SpeedRedBrush}" BorderThickness="1" CornerRadius="12" Padding="21">
                         <Grid ColumnSpacing="22">

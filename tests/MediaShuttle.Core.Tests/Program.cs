@@ -104,6 +104,13 @@ internal static class Program
         string readOnlyUnknown = Path.Combine(cardRoot, "CAMERA.DAT");
         await File.WriteAllTextAsync(readOnlyUnknown, "camera database");
         File.SetAttributes(readOnlyUnknown, FileAttributes.ReadOnly | FileAttributes.Hidden);
+
+        string protectedCameraFolder = Path.Combine(cardRoot, "PRIVATE", "CAMERA_DB", "NESTED");
+        Directory.CreateDirectory(protectedCameraFolder);
+        string protectedCameraFile = Path.Combine(protectedCameraFolder, "INDEX.BDM");
+        await File.WriteAllTextAsync(protectedCameraFile, "nested camera database");
+        File.SetAttributes(protectedCameraFile, FileAttributes.ReadOnly | FileAttributes.Hidden);
+        File.SetAttributes(Path.GetDirectoryName(protectedCameraFolder)!, FileAttributes.ReadOnly | FileAttributes.Hidden);
         string protectedDirectory = Path.Combine(cardRoot, "System Volume Information");
         Directory.CreateDirectory(protectedDirectory);
 

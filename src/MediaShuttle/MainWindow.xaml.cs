@@ -76,14 +76,6 @@ public sealed partial class MainWindow : Window
         DestinationText.SetValue(ToolTipService.ToolTipProperty, _destinationRoot);
         ActivityList.ItemsSource = _activity;
 
-        SettingsButton.Click += (_, _) =>
-        {
-            SettingsExpander.IsExpanded = !SettingsExpander.IsExpanded;
-            if (SettingsExpander.IsExpanded)
-            {
-                SettingsExpander.StartBringIntoView();
-            }
-        };
         OpenFolderButton.Click += (_, _) => OpenDestinationFolder();
         ChangeDestinationButton.Click += async (_, _) => await ChooseDestinationAsync();
         TransferButton.Click += async (_, _) => await StartTransferAsync();
