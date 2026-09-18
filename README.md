@@ -51,9 +51,17 @@ This is a file-level erase, not a filesystem format. For a freshly initialized c
 
 macOS AppleDouble sidecars whose names begin with `._` are ignored during ingest.
 
-## Install a release
+## Install release
 
-Download `MediaShuttle-v2.0.0-win-x64.zip` from the Releases page, extract it, and run `MediaShuttle.exe`. The release is self-contained for Windows 10/11 x64 and does not require a separate .NET installation.
+Download `MediaShuttle-Setup-v2.0.0-win-x64.exe` from the
+[GitHub Releases page](https://github.com/AdamNolle/media-shuttle/releases).
+Run the installer to install Media Shuttle for the current Windows user. It
+adds Start Menu and optional Desktop/startup shortcuts and includes the
+self-contained Windows App SDK and .NET runtime. Administrator access and a
+separate .NET installation are not required.
+
+The release also includes a portable ZIP and `SHA256SUMS.txt`. The ZIP must be
+extracted before running `MediaShuttle.exe`; it is not an installer.
 
 ## Build from source
 
@@ -63,26 +71,32 @@ Requirements:
 - Windows x64
 - .NET 8 SDK or later
 - PowerShell 5.1 or later
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php)
 
 From the repository root:
 
 ```powershell
+winget install --id JRSoftware.InnoSetup --exact --scope user
 .\build.ps1 -Clean
 ```
 
-The build restores the official Microsoft Windows App SDK, generates the fast-card icon, runs the core safety tests, publishes a self-contained WinUI 3 build, and creates:
+The build restores the official Microsoft Windows App SDK, generates the app
+icon, runs the core safety tests, publishes a self-contained WinUI 3 build,
+and creates:
 
 ```text
+artifacts\MediaShuttle-Setup-v2.0.0-win-x64.exe
 artifacts\MediaShuttle-v2.0.0-win-x64.zip
+artifacts\SHA256SUMS.txt
 ```
 
-To build and install for the current Windows user:
+Use `.\build.ps1 -SkipInstaller` only when a portable-only local build is
+intended. `.\install.ps1 -EnableStartup` remains available for building and
+installing directly from a source checkout.
 
-```powershell
-.\install.ps1 -EnableStartup
-```
-
-The installer places the app in `%LOCALAPPDATA%\Programs\Media Shuttle`, creates Desktop and Start Menu shortcuts, and optionally enables background startup. The media destination contains media folders only.
+Pushing a version tag such as `v2.0.0` runs the Windows release workflow. The
+tag must match `<Version>` in `MediaShuttle.csproj`; the workflow builds and
+publishes the installer, portable ZIP, and checksums to a GitHub Release.
 
 ## Test
 
