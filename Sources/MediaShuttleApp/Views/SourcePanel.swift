@@ -8,24 +8,26 @@ struct SourcePanel: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel("SOURCE")
             sourceSummary
-                .padding(.top, 14)
+                .padding(.top, 10)
 
-            Divider()
-                .padding(.vertical, 24)
+            Hairline().padding(.vertical, 12)
 
             SectionLabel("CARD CONTENTS")
             MediaBreakdown(counts: model.mediaCounts)
-                .padding(.top, 12)
+                .padding(.top, 10)
 
-            Divider()
-                .padding(.vertical, 24)
+            Hairline().padding(.vertical, 12)
 
             SectionLabel("DESTINATION")
             destination
-                .padding(.top, 12)
+                .padding(.top, 10)
+
+            Spacer(minLength: 0)
         }
-        .padding(18)
-        .panelStyle()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Theme.sidebarBackground)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Source media summary")
     }
@@ -41,101 +43,107 @@ struct SourcePanel: View {
     }
 
     private var sourceSummary: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 9) {
             MediaCardIcon(connected: model.currentCard != nil)
-                .frame(width: 34, height: 44)
+                .frame(width: 38, height: 50)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(model.currentCard?.volumeLabel ?? "No card connected")
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(model.currentCard?.volumeLabel ?? "No card")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
+
                 if let card = model.currentCard {
                     Text("\(card.rootURL.path) · \(card.driveType)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(Theme.textMuted)
                         .lineLimit(2)
-                    Text(
-                        "\(assetCount.formatted()) assets · " +
-                        ByteCountFormatter.string(fromByteCount: model.totalMediaBytes, countStyle: .file)
-                    )
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    Text("\(assetCount.formatted()) assets · \(ByteCountFormatter.shuttleString(model.totalMediaBytes))")
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textMuted)
                 } else {
-                    Text("Insert a camera card or connect camera storage to begin.")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                    Text("Insert a camera card to begin.")
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("—")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
                 }
             }
         }
     }
 
     private var destination: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(destinationDisplayPath)
-                .font(.system(size: 11, design: .monospaced))
-                .lineLimit(2)
+                .font(Theme.mono(10))
+                .foregroundStyle(Theme.textBright)
+                .lineLimit(3)
                 .truncationMode(.middle)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7))
                 .accessibilityLabel("Destination folder")
 
-            HStack(spacing: 8) {
-                Button(action: model.chooseDestination) {
-                    Label("Choose", systemImage: "folder.badge.plus")
-                        .frame(maxWidth: .infinity)
-                }
-                .secondaryActionStyle()
-                Button(action: model.openDestination) {
-                    Label("Open", systemImage: "folder")
-                        .frame(maxWidth: .infinity)
-                }
-                .secondaryActionStyle()
-                .disabled(!model.isDestinationAvailable)
+            HStack(spacing: 5) {
+                Button("Change", action: model.chooseDestination)
+                    .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
+                Button("Open", action: model.openDestination)
+                    .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
+                    .disabled(!model.isDestinationAvailable)
             }
-            .controlSize(.large)
 
             Text("Photos/JPEGs\nPhotos/RAWs\nPhotos/Other\nVideos")
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .lineSpacing(4)
+                .font(Theme.mono(9.5))
+                .foregroundStyle(Theme.textMuted)
+                .lineSpacing(2)
         }
     }
 }
 
+/// Flat SD-card silhouette with the clipped top-right corner from the mock.
 private struct MediaCardIcon: View {
     let connected: Bool
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            UnevenRoundedRectangle(
-                topLeadingRadius: 4,
-                bottomLeadingRadius: 4,
-                bottomTrailingRadius: 4,
-                topTrailingRadius: 11
-            )
-            .fill(
-                LinearGradient(
-                    colors: [.primary.opacity(0.16), .primary.opacity(0.06)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .stroke(.separator)
-            Capsule()
-                .fill(connected ? Color.accentColor : Color.secondary)
-                .frame(width: 3, height: 25)
-                .padding(.leading, 6)
-            HStack(spacing: 2) {
-                ForEach(0..<4, id: \.self) { _ in
-                    Rectangle().fill(.secondary).frame(width: 2, height: 6)
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+            let notch = w * 0.28
+
+            ZStack(alignment: .topLeading) {
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: 0))
+                    path.addLine(to: CGPoint(x: w - notch, y: 0))
+                    path.addLine(to: CGPoint(x: w, y: notch))
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.addLine(to: CGPoint(x: 0, y: h))
+                    path.closeSubpath()
                 }
+                .fill(Theme.fillStrong)
+                .overlay {
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: 0))
+                        path.addLine(to: CGPoint(x: w - notch, y: 0))
+                        path.addLine(to: CGPoint(x: w, y: notch))
+                        path.addLine(to: CGPoint(x: w, y: h))
+                        path.addLine(to: CGPoint(x: 0, y: h))
+                        path.closeSubpath()
+                    }
+                    .stroke(Theme.hairline, lineWidth: 1)
+                }
+
+                Rectangle()
+                    .fill(connected ? Theme.accent : Theme.textMuted.opacity(0.6))
+                    .frame(width: 3, height: h * 0.4)
+                    .offset(x: w * 0.13, y: h * 0.14)
+
+                HStack(spacing: 2) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        Rectangle()
+                            .fill(Theme.textMuted.opacity(0.55))
+                            .frame(width: 2.5, height: h * 0.14)
+                    }
+                }
+                .offset(x: w * 0.17, y: h * 0.72)
             }
-            .offset(x: 14, y: 13)
         }
         .accessibilityHidden(true)
     }
@@ -148,43 +156,40 @@ private struct MediaBreakdown: View {
         counts.values.reduce(0, +)
     }
 
-    private var total: Double {
-        Double(max(1, itemCount))
-    }
-
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 9) {
             GeometryReader { proxy in
-                HStack(spacing: 2) {
-                    ForEach(MediaKind.allCases, id: \.self) { kind in
-                        let width = proxy.size.width * Double(counts[kind, default: 0]) / total
-                        if width > 0 {
-                            Capsule()
-                                .fill(kind.color)
-                                .frame(width: width)
-                        }
-                    }
+                HStack(spacing: 1) {
                     if itemCount == 0 {
-                        Capsule().fill(.quaternary)
+                        Rectangle().fill(Theme.hairlineSoft)
+                    } else {
+                        ForEach(MediaKind.allCases, id: \.self) { kind in
+                            let share = Double(counts[kind, default: 0]) / Double(itemCount)
+                            if share > 0 {
+                                Rectangle()
+                                    .fill(kind.swatch)
+                                    .frame(width: max(2, proxy.size.width * share))
+                            }
+                        }
                     }
                 }
             }
-            .frame(height: 7)
+            .frame(height: 6)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 0) {
                 ForEach(MediaKind.allCases, id: \.self) { kind in
-                    HStack(spacing: 9) {
-                        Circle()
-                            .fill(kind.color)
+                    HStack(spacing: 6) {
+                        Rectangle()
+                            .fill(kind.swatch)
                             .frame(width: 7, height: 7)
                         Text(kind.label)
-                            .foregroundStyle(.secondary)
-                        Spacer()
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer(minLength: 4)
                         Text(counts[kind, default: 0].formatted())
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Theme.textPrimary)
                     }
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(Theme.mono(10))
+                    .padding(.vertical, 2.5)
                 }
             }
         }
@@ -192,12 +197,13 @@ private struct MediaBreakdown: View {
 }
 
 extension MediaKind {
-    fileprivate var color: Color {
+    /// Monochrome ramp, lightest to darkest, as in the design document.
+    fileprivate var swatch: Color {
         switch self {
-        case .jpeg: Color(red: 0.25, green: 0.27, blue: 0.31)
-        case .raw: Color(red: 0.42, green: 0.44, blue: 0.48)
-        case .otherPhoto: Color(red: 0.60, green: 0.62, blue: 0.65)
-        case .video: Color(red: 0.76, green: 0.78, blue: 0.81)
+        case .jpeg: Theme.textBright
+        case .raw: Theme.textMuted
+        case .otherPhoto: Theme.textMuted.opacity(0.62)
+        case .video: Theme.textMuted.opacity(0.4)
         }
     }
 }

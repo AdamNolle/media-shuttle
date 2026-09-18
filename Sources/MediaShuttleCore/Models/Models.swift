@@ -256,7 +256,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var showNotifications = true
     public var showActivityLog = true
     public var destinationPath = ""
-    public var appearance = "System"
+    /// The interface is designed dark; System and Light remain available in Settings.
+    public var appearance = "Dark"
 
     public init() {}
 }

@@ -38,9 +38,9 @@ struct MediaShuttleApp: App {
                 .preferredColorScheme(model.appearance)
                 .task { await model.start() }
         }
-        .defaultSize(width: 1_120, height: 720)
+        .defaultSize(width: 1_060, height: 530)
         .defaultPosition(.center)
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .commands {
             CommandMenu("Media") {

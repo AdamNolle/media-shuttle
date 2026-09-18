@@ -4,6 +4,7 @@ import MediaShuttleCore
 
 extension AppModel {
     func configureScreenshotState() {
+        settings.appearance = "Dark"
         let card = CardInfo(
             rootURL: URL(fileURLWithPath: "/Volumes/LEXAR", isDirectory: true),
             volumeLabel: "LEXAR",
@@ -71,6 +72,11 @@ extension AppModel {
         )
         topStatus = "LEXAR · TRANSFER VERIFIED"
         statusTone = .verified
+        banner = BannerMessage(
+            title: "Transfer verified — 457 files safe in the destination",
+            message: "SHA-256 matched on every remaining camera file",
+            tone: .success
+        )
         heroTitle = "Every original. Safely home."
         heroSubtitle = "457 photos and videos match their destination copies, byte for byte. This card is safe to erase."
         primaryActionTitle = "Transfer again"

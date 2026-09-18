@@ -5,54 +5,24 @@ struct ContentView: View {
     @State private var showingEraseConfirmation = false
 
     var body: some View {
-        ZStack {
-            Color(nsColor: .windowBackgroundColor)
-                .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [Color.accentColor.opacity(0.08), .clear],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 620
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-
-            ScrollView {
-                HStack(alignment: .top, spacing: 22) {
-                    SourcePanel(model: model)
-                        .frame(width: 258)
-
-                    OperationsView(
-                        model: model,
-                        showEraseConfirmation: { showingEraseConfirmation = true }
-                    )
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-                .frame(maxWidth: 1_220, alignment: .topLeading)
-                .padding(.horizontal, 26)
-                .padding(.vertical, 24)
+        VStack(spacing: 0) {
+            TitleBar(model: model)
+            Hairline()
+            HStack(spacing: 0) {
+                SourcePanel(model: model)
+                    .frame(width: 216)
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(width: 1)
+                OperationsView(
+                    model: model,
+                    showEraseConfirmation: { showingEraseConfirmation = true }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .frame(minWidth: 960, minHeight: 650)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                HStack(spacing: 7) {
-                    AppMark(diameter: 18, showsConnectedDot: model.currentCard != nil)
-                    Text("Media Shuttle")
-                        .font(.headline)
-                }
-            }
-            ToolbarItem(placement: .principal) {
-                StatusPill(text: model.topStatus, tone: model.statusTone)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                SettingsLink {
-                    Image(systemName: "gearshape")
-                }
-                .help("Settings")
-            }
-        }
+        .background(Theme.contentBackground)
+        .frame(minWidth: 940, minHeight: 470)
         .sheet(isPresented: $showingEraseConfirmation) {
             EraseConfirmationView(model: model) {
                 showingEraseConfirmation = false
@@ -64,34 +34,56 @@ struct ContentView: View {
     }
 }
 
+/// Replaces the stock toolbar. The window uses `.hiddenTitleBar`, so the
+/// traffic lights float over this bar — hence the leading inset.
+private struct TitleBar: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            AppMark(diameter: 15)
+
+            Text("MEDIA SHUTTLE")
+                .font(Theme.mono(10.5, .semibold))
+                .tracking(1.15)
+                .foregroundStyle(Theme.textPrimary)
+
+            StatusPill(text: model.topStatus, tone: model.statusTone)
+
+            Spacer(minLength: 12)
+
+            SettingsLink {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(ChromeIconButtonStyle())
+            .help("Settings")
+        }
+        .padding(.leading, 78)
+        .padding(.trailing, 8)
+        .frame(height: 38)
+        .background(Theme.chromeBackground)
+    }
+}
+
 private struct StatusPill: View {
     let text: String
     let tone: AppStatusTone
 
-    private var color: Color {
-        switch tone {
-        case .neutral: .secondary
-        case .active: .accentColor
-        case .verified: .green
-        case .warning: .orange
-        case .error: .red
-        }
-    }
-
     var body: some View {
-        HStack(spacing: 7) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-                .shadow(color: color.opacity(0.7), radius: 4)
+        HStack(spacing: 6) {
+            Rectangle()
+                .fill(tone.color)
+                .frame(width: 5, height: 5)
             Text(text)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .tracking(0.5)
+                .font(Theme.mono(9.5))
+                .tracking(0.7)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 5)
-        .glassCapsuleStyle()
-        .overlay(Capsule().strokeBorder(color.opacity(0.24)))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(Theme.fill)
+        .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Media status: \(text)")
     }

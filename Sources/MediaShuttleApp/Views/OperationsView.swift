@@ -6,298 +6,356 @@ struct OperationsView: View {
     let showEraseConfirmation: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 9) {
             if let banner = model.banner {
                 BannerView(message: banner, onDismiss: model.dismissBanner)
             }
 
-            hero
             SessionPanel(model: model)
 
             if model.settings.showActivityLog {
-                activity
+                ActivityLog(entries: model.activities)
             }
 
-            erasePanel
+            Spacer(minLength: 4)
+
+            EraseBar(model: model, showEraseConfirmation: showEraseConfirmation)
         }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 11)
     }
+}
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                SectionLabel("VERIFIED CAMERA INGEST")
-                    .foregroundStyle(Color.accentColor)
-                Spacer()
-                if let card = model.currentCard {
-                    Label(card.volumeLabel, systemImage: "externaldrive.fill")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
+// MARK: - Banner
+
+private struct BannerView: View {
+    let message: BannerMessage
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Group {
+                if message.tone == .success {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black))
+                        .foregroundStyle(Theme.contentBackground)
+                        .frame(width: 14, height: 14)
+                        .background(message.tone.color)
+                } else {
+                    Image(systemName: message.tone.symbol)
+                        .font(.system(size: 12))
+                        .foregroundStyle(message.tone.color)
+                        .frame(width: 14, height: 14)
                 }
             }
+            .padding(.top, 1)
 
-            HStack(alignment: .center, spacing: 18) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: model.canWipe
-                                    ? [Color.green, Color.teal]
-                                    : [Color.accentColor, Color.indigo],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Image(systemName: model.canWipe ? "checkmark.shield.fill" : "camera.aperture")
-                        .font(.system(size: 30, weight: .medium))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 66, height: 66)
-                .shadow(
-                    color: (model.canWipe ? Color.green : Color.accentColor).opacity(0.22),
-                    radius: 12,
-                    y: 6
-                )
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(model.heroTitle)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .tracking(-0.7)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(model.heroSubtitle)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(spacing: 8) {
-                    Button(model.primaryActionTitle) { model.startTransfer() }
-                        .primaryActionStyle()
-                        .controlSize(.large)
-                        .frame(width: 178)
-                        .disabled(!model.canTransfer)
-                    if model.isBusy && model.progress.phase != .erasing && model.progress.phase != .reVerifying {
-                        Button("Cancel transfer") { model.cancelTransfer() }
-                            .frame(width: 178)
-                    }
-                }
-            }
-        }
-        .padding(22)
-        .panelStyle()
-    }
-
-    private var activity: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("ACTIVITY")
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 5) {
-                    ForEach(model.activities.prefix(12)) { entry in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(entry.date, format: .dateTime.hour().minute().second())
-                                .foregroundStyle(.secondary)
-                            Text(entry.message)
-                        }
-                        .font(.system(size: 11, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            .frame(height: 74)
-        }
-    }
-
-    private var erasePanel: some View {
-        HStack(spacing: 16) {
-            Image(systemName: model.canWipe ? "lock.open.fill" : "lock.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(model.canWipe ? .red : .secondary)
-                .frame(width: 42, height: 42)
-                .background(
-                    model.canWipe ? Color.red.opacity(0.10) : Color.secondary.opacity(0.08),
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                )
-
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    SectionLabel("ERASE CARD CONTENTS")
-                        .foregroundStyle(.red)
-                    Text(model.canWipe ? "UNLOCKED" : "LOCKED")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .tracking(0.6)
-                        .foregroundStyle(model.canWipe ? .red : .secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(
-                            model.canWipe ? Color.red.opacity(0.09) : Color.secondary.opacity(0.08),
-                            in: Capsule()
-                        )
-                        .overlay(
-                            Capsule().stroke(model.canWipe ? Color.red.opacity(0.65) : Color.secondary.opacity(0.3))
-                        )
-                }
-                Text(eraseDescription)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(message.title)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(message.message)
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button("Erase card…", role: .destructive, action: showEraseConfirmation)
-                .buttonStyle(.bordered)
-                .tint(.red)
-                .controlSize(.large)
-                .disabled(!model.canWipe)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9))
+            }
+            .buttonStyle(ChromeIconButtonStyle())
+            .help("Dismiss")
         }
-        .padding(18)
-        .destructivePanelStyle(enabled: model.canWipe)
-    }
-
-    private var eraseDescription: String {
-        if model.canWipe {
-            return "Unlocked — every remaining media file has a verified destination copy."
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(message.tone.color.opacity(0.07))
+        .overlay(Rectangle().strokeBorder(message.tone.color.opacity(0.32), lineWidth: 1))
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(message.tone.color)
+                .frame(width: 3)
         }
-        if model.media.isEmpty, model.currentCard != nil {
-            return "No verified media is available to erase."
-        }
-        return "Locked until every remaining camera file has a verified destination copy."
     }
 }
+
+// MARK: - Session
 
 private struct SessionPanel: View {
     @Bindable var model: AppModel
 
-    private var progressColor: Color {
+    private var phaseColor: Color {
         switch model.progress.phase {
-        case .complete:
-            .green
-        case .error:
-            .red
-        case .cancelled:
-            .orange
-        default:
-            .accentColor
+        case .complete: Theme.verified
+        case .error: Theme.accent
+        case .cancelled: Theme.caution
+        case .idle: Theme.textMuted
+        default: Theme.textBright
         }
     }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
-            VStack(alignment: .leading, spacing: 15) {
-                HStack {
-                    SectionLabel("THIS SESSION")
-                    Spacer()
-                    Text(model.progress.phase.label)
-                        .foregroundStyle(progressColor)
-                    Text(model.progress.fraction, format: .percent.precision(.fractionLength(0)))
-                }
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-
-                ProgressView(value: model.progress.fraction)
-                    .progressViewStyle(.linear)
-                    .tint(progressColor)
-
-                HStack(spacing: 12) {
-                    Metric(label: "COPIED", value: "\(model.progress.copiedFiles.formatted()) files")
-                    Metric(label: "ALREADY SAFE", value: "\(model.progress.skippedFiles.formatted()) files")
-                    Metric(label: "PROCESSED", value: processedText)
-                    Metric(
-                        label: "THROUGHPUT",
-                        value: model.throughputBytesPerSecond.map {
-                            ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) + "/s"
-                        } ?? "—"
-                    )
-                    Metric(label: "ELAPSED", value: elapsedString(model.elapsed))
-                }
-
-                Divider()
-
-                HStack(spacing: 12) {
-                    Text(currentActivity)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Report", action: model.openReport)
-                        .disabled(model.reportURL == nil)
-                    Button("Transfer again", action: model.startTransfer)
-                        .disabled(!model.canTransfer || model.verifiedSession == nil)
-                }
+            VStack(spacing: 0) {
+                header
+                SegmentedProgressBar(fraction: model.progress.fraction, color: phaseColor)
+                    .padding(.horizontal, 9)
+                    .padding(.bottom, 8)
+                Hairline()
+                metrics
+                Hairline()
+                footer
             }
-            .padding(20)
-            .panelStyle()
+            .panelBox()
         }
     }
 
-    private var processedText: String {
-        guard model.progress.processedBytes > 0 else { return "0 B" }
-        return ByteCountFormatter.string(
-            fromByteCount: model.progress.processedBytes,
-            countStyle: .file
-        )
+    private var header: some View {
+        HStack(spacing: 8) {
+            SectionLabel("THIS SESSION")
+            Spacer(minLength: 8)
+            Text(model.progress.phase.label)
+                .font(Theme.mono(9.5))
+                .tracking(0.6)
+                .foregroundStyle(phaseColor)
+            Text(model.progress.fraction, format: .percent.precision(.fractionLength(0)))
+                .font(Theme.mono(9.5, .semibold))
+                .foregroundStyle(phaseColor)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 9)
+        .padding(.top, 8)
+        .padding(.bottom, 7)
     }
+
+    private var metrics: some View {
+        HStack(spacing: 0) {
+            let processed = Self.split(bytes: model.progress.processedBytes)
+            let total = ByteCountFormatter.shuttleString(model.progress.totalBytes)
+            let rate = model.throughputBytesPerSecond.map { Self.split(bytes: Int64($0)) }
+
+            Metric(label: "COPIED", value: model.progress.copiedFiles.formatted(), caption: "files")
+            MetricDivider()
+            Metric(label: "ALREADY SAFE", value: model.progress.skippedFiles.formatted(), caption: "re-verified")
+            MetricDivider()
+            Metric(label: "PROCESSED", value: processed.value, caption: "\(processed.unit) of \(total)")
+            MetricDivider()
+            Metric(
+                label: "THROUGHPUT",
+                value: rate?.value ?? "—",
+                caption: rate.map { "\($0.unit)/s avg" } ?? "idle"
+            )
+            MetricDivider()
+            Metric(label: "ELAPSED", value: Self.elapsed(model.elapsed), caption: "min:sec")
+        }
+        // Without this the 1px dividers, being vertically flexible, stretch the
+        // whole panel to fill the window.
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 6) {
+            Text(currentActivity)
+                .font(Theme.mono(9.5))
+                .foregroundStyle(Theme.textMuted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button("Report", action: model.openReport)
+                .buttonStyle(ShuttleButtonStyle(kind: .secondary))
+                .disabled(model.reportURL == nil)
+
+            if model.isBusy, model.progress.phase != .erasing, model.progress.phase != .reVerifying {
+                Button("Cancel", action: model.cancelTransfer)
+                    .buttonStyle(ShuttleButtonStyle(kind: .secondary))
+            }
+
+            // With no card the title reads "Scan for media", so run a scan
+            // rather than a transfer.
+            Button(model.primaryActionTitle) {
+                if hasCard {
+                    model.startTransfer()
+                } else {
+                    model.scanNow()
+                }
+            }
+            .buttonStyle(ShuttleButtonStyle(kind: .primary))
+            .disabled(hasCard ? !model.canTransfer : model.isBusy)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(Theme.panelFooterBackground)
+    }
+
+    private var hasCard: Bool { model.currentCard != nil }
 
     private var currentActivity: String {
         guard let source = model.progress.currentSourceURL else { return model.progress.currentItem }
         let folder = model.progress.currentDestinationFolder
-        return folder.isEmpty
-            ? source.path
-            : "LAST · \(source.path) → \(folder)"
+        return folder.isEmpty ? source.path : "LAST · \(source.path) → \(folder)"
     }
 
-    private func elapsedString(_ interval: TimeInterval) -> String {
+    private static func elapsed(_ interval: TimeInterval) -> String {
         let total = max(0, Int(interval))
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    /// Splits "10.1 GB" into its number and unit so the metric can show the
+    /// value large with the unit as a caption, as the design does.
+    private static func split(bytes: Int64) -> (value: String, unit: String) {
+        let formatted = ByteCountFormatter.shuttleString(bytes)
+        let parts = formatted.split(separator: " ", maxSplits: 1)
+        guard parts.count == 2 else { return (formatted, "") }
+        return (String(parts[0]), String(parts[1]))
+    }
+}
+
+private struct SegmentedProgressBar: View {
+    let fraction: Double
+    let color: Color
+
+    private static let segments = 32
+
+    var body: some View {
+        let filled = Int((fraction * Double(Self.segments)).rounded())
+        HStack(spacing: 1) {
+            ForEach(0..<Self.segments, id: \.self) { index in
+                Rectangle()
+                    .fill(index < filled ? color : Theme.hairlineSoft)
+                    .frame(height: 4)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: filled)
+        .accessibilityElement()
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(Int(fraction * 100)) percent")
     }
 }
 
 private struct Metric: View {
     let label: String
     let value: String
+    let caption: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 3) {
             SectionLabel(label)
             Text(value)
-                .font(.system(size: 12, design: .monospaced))
+                .font(Theme.mono(15, .semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .monospacedDigit()
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(caption)
+                .font(Theme.mono(9.5))
+                .foregroundStyle(Theme.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value) \(caption)")
     }
 }
 
-private struct BannerView: View {
-    let message: BannerMessage
-    let onDismiss: () -> Void
+private struct MetricDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(width: 1)
+    }
+}
 
-    private var color: Color {
-        switch message.tone {
-        case .info: .blue
-        case .success: .green
-        case .warning: .orange
-        case .error: .red
+// MARK: - Activity
+
+private struct ActivityLog: View {
+    let entries: [ActivityEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                SectionLabel("ACTIVITY")
+                Hairline()
+            }
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(entries.prefix(20)) { entry in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(entry.date, format: .dateTime.hour().minute().second())
+                                .foregroundStyle(Theme.textMuted)
+                            Text(entry.message)
+                                .foregroundStyle(Theme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .font(Theme.mono(10))
+                        .padding(.vertical, 4)
+                        .overlay(alignment: .bottom) { Hairline(color: Theme.hairlineSoft) }
+                    }
+                }
+            }
+            .frame(maxHeight: 108)
         }
+    }
+}
+
+// MARK: - Erase
+
+private struct EraseBar: View {
+    @Bindable var model: AppModel
+    let showEraseConfirmation: () -> Void
+
+    private var detail: String {
+        if model.canWipe {
+            let root = model.currentCard?.rootURL.path ?? "the card"
+            return "Every remaining file on \(root) has a verified copy · typed confirmation required"
+        }
+        if model.media.isEmpty, model.currentCard != nil {
+            return "No verified media is available to erase."
+        }
+        return "Locked until every remaining camera file has a verified destination copy."
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: message.tone == .success ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(color)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(message.title).fontWeight(.semibold)
-                Text(message.message).foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("Erase card")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(model.canWipe ? "UNLOCKED" : "LOCKED")
+                        .font(Theme.mono(9))
+                        .tracking(1)
+                        .foregroundStyle(model.canWipe ? Theme.accent : Theme.textMuted)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            Rectangle().strokeBorder(
+                                model.canWipe ? Theme.accent.opacity(0.45) : Theme.hairline,
+                                lineWidth: 1
+                            )
+                        )
+                }
+                Text(detail)
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textMuted)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .font(.system(size: 12))
-            Spacer()
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button("Erase everything on card", action: showEraseConfirmation)
+                .buttonStyle(ShuttleButtonStyle(kind: .destructive))
+                .disabled(!model.canWipe)
         }
-        .padding(12)
-        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
-        .overlay(RoundedRectangle(cornerRadius: 9).stroke(color.opacity(0.35)))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .panelBox()
     }
 }
