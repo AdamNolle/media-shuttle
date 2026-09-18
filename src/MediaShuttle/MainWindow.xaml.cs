@@ -165,6 +165,12 @@ public sealed partial class MainWindow : Window
         double width = _appWindow.Size.Width / scale;
         bool narrow = width < 900;
 
+        // ScrollViewer only constrains width along an axis it can scroll, so with horizontal
+        // scrolling disabled it otherwise hands MainLayout unbounded width and its content never
+        // wraps or reflows. Pin it to the window's actual content width so it, and everything
+        // inside it, resizes as the window is resized.
+        MainLayout.Width = Math.Max(0, width);
+
         SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(240);
         OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         Grid.SetColumn(SourcePanel, 0);

@@ -69,8 +69,8 @@
             </Button>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid x:Name="MainLayout" MaxWidth="1220" Padding="24,22,24,26" ColumnSpacing="22" RowSpacing="18" HorizontalAlignment="Stretch">
+        <ScrollViewer x:Name="RootScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="MainLayout" MaxWidth="1220" Padding="24,22,24,26" ColumnSpacing="22" RowSpacing="18" HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="SourceColumn" Width="240" />
                     <ColumnDefinition x:Name="OperationsColumn" Width="*" />
