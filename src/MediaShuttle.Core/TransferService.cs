@@ -5,6 +5,7 @@ namespace MediaShuttle.Core;
 public sealed class TransferService
 {
     private const int BufferSize = 1024 * 1024;
+    private const string PartialMarker = ".partial-";
     private readonly StateStore _stateStore;
     private readonly AppLogger _logger;
 
@@ -175,7 +176,7 @@ public sealed class TransferService
         IProgress<OperationProgress>? progress,
         CancellationToken cancellationToken)
     {
-        string temporaryPath = destinationPath + ".partial-" + Guid.NewGuid().ToString("N");
+        string temporaryPath = destinationPath + PartialMarker + Guid.NewGuid().ToString("N");
         try
         {
             await _logger.WriteAsync($"Copying {item.FileName}", cancellationToken);
@@ -266,6 +267,7 @@ public sealed class TransferService
                  {
                      Path.Combine(destinationRoot, "Photos", "JPEGs"),
                      Path.Combine(destinationRoot, "Photos", "RAWs"),
+            Path.Combine(destinationRoot, "Photos", "Other"),
                      Path.Combine(destinationRoot, "Videos")
                  })
         {
@@ -275,8 +277,16 @@ public sealed class TransferService
 
     private static void CleanupPartials(string destinationRoot)
     {
-        foreach (string partial in Directory.EnumerateFiles(destinationRoot, "*.partial-*", SearchOption.AllDirectories))
+        foreach (string partial in Directory.EnumerateFiles(
+                     destinationRoot,
+                     $"*{PartialMarker}*",
+                     SearchOption.AllDirectories))
         {
+            if (!IsOwnedPartial(partial))
+            {
+                continue;
+            }
+
             try
             {
                 File.SetAttributes(partial, FileAttributes.Normal);
@@ -289,6 +299,32 @@ public sealed class TransferService
             {
             }
         }
+    }
+
+    private static bool IsOwnedPartial(string path)
+    {
+        string fileName = Path.GetFileName(path);
+        int markerIndex = fileName.LastIndexOf(PartialMarker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> identifier = fileName.AsSpan(markerIndex + PartialMarker.Length);
+        if (identifier.Length != 32)
+        {
+            return false;
+        }
+
+        foreach (char character in identifier)
+        {
+            if (!Uri.IsHexDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void EnsureFreeSpace(string destinationRoot, long totalBytes)

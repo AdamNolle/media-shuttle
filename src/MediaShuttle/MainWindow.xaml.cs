@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using MediaShuttle.Core;
 using Microsoft.UI;
@@ -34,6 +35,8 @@ public sealed partial class MainWindow : Window
     private bool _settingsReady;
     private bool _scanInProgress;
     private bool _busy;
+    private bool _destinationAvailable = true;
+    private int _lastScannedMediaCount = -1;
     private bool _allowClose;
 
     public MainWindow(bool launchInBackground)
@@ -116,7 +119,7 @@ public sealed partial class MainWindow : Window
         int maximumWidth = Math.Max(720, workArea.Width - edgeMargin * 2);
         int maximumHeight = Math.Max(560, workArea.Height - edgeMargin * 2);
         int width = Math.Min((int)Math.Round(1180 * scale), maximumWidth);
-        int height = Math.Min((int)Math.Round(820 * scale), maximumHeight);
+        int height = Math.Min((int)Math.Round(720 * scale), maximumHeight);
         int x = workArea.X + Math.Max(0, (workArea.Width - width) / 2);
         int y = workArea.Y + Math.Max(0, (workArea.Height - height) / 2);
 
@@ -138,8 +141,19 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        EnsureDestinationFolders();
+        Exception? destinationError = null;
+        try
+        {
+            EnsureDestinationFolders(_destinationRoot);
+        }
+        catch (Exception exception) when (IsDestinationException(exception))
+        {
+            _destinationAvailable = false;
+            destinationError = exception;
+        }
+
         UpdateDestinationDisplay();
+        OpenFolderButton.IsEnabled = _destinationAvailable;
         AutoTransferToggle.IsOn = _settings.AutoTransfer;
         GroupByDateToggle.IsOn = _settings.GroupByDate;
         NotificationsToggle.IsOn = _settings.ShowNotifications;
@@ -151,13 +165,26 @@ public sealed partial class MainWindow : Window
             _ => 0
         };
         ApplyTheme(_settings.Theme);
-        _settings.DestinationRoot = _destinationRoot;
+        if (_destinationAvailable)
+        {
+            _settings.DestinationRoot = _destinationRoot;
+            await _stateStore.SaveSettingsAsync(_settings);
+        }
         _settingsReady = true;
-        await _stateStore.SaveSettingsAsync(_settings);
-        AddActivity("Watcher ready. Media folders and volume identity checks are active.");
+        AddActivity("Watcher ready. Removable-media and volume identity checks active.");
         _scanTimer.Start();
         await ScanCardsAsync();
-        if (_launchInBackground && _currentCard is null)
+
+        if (destinationError is not null)
+        {
+            ShowError(
+                "Destination unavailable",
+                "The saved destination could not be opened. Choose an available folder before transferring.");
+            AddActivity("Saved destination unavailable: " + destinationError.Message);
+            SetTopStatus("Choose a destination", Color.FromArgb(255, 196, 43, 43));
+        }
+
+        if (_launchInBackground && _currentCard is null && _destinationAvailable)
         {
             _appWindow.Hide();
         }
@@ -180,22 +207,42 @@ public sealed partial class MainWindow : Window
             {
                 _currentCard = null;
                 _verifiedSession = null;
+                _lastScannedMediaCount = -1;
                 UpdateDisconnectedState();
                 return;
             }
 
             CardInfo card = cards[0];
             bool isNew = _seenCards.Add(card.RootPath);
+            bool cardChanged = _currentCard is null ||
+                               !_currentCard.RootPath.Equals(card.RootPath, StringComparison.OrdinalIgnoreCase);
+            TransferSession? previousSession = _verifiedSession;
+            int previousMediaCount = _lastScannedMediaCount;
+
             _currentCard = card;
-            UpdateDetectedState(card);
             IReadOnlyList<MediaItem> media = await Task.Run(() => MediaClassifier.Scan(card.RootPath));
+            _lastScannedMediaCount = media.Count;
             AssetCountText.Text = media.Count.ToString("N0");
             MediaSizeText.Text = FormatBytes(media.Sum(item => item.Size));
             _verifiedSession = await _stateStore.LoadLatestVerifiedForCardAsync(card);
-            WipeButton.IsEnabled = _verifiedSession is { Files.Count: > 0 };
-            if (WipeButton.IsEnabled)
+
+            bool canWipe = _verifiedSession is { Files.Count: > 0 };
+            bool verificationChanged = previousSession?.SessionId != _verifiedSession?.SessionId;
+            WipeButton.IsEnabled = canWipe;
+            if (cardChanged || previousMediaCount != media.Count || verificationChanged)
             {
-                WipeDescriptionText.Text = "Unlocked. Every remaining camera file has a matching verified destination copy.";
+                if (media.Count == 0)
+                {
+                    UpdateEmptyCardState(card, canWipe);
+                }
+                else if (canWipe)
+                {
+                    UpdateVerifiedState(card, _verifiedSession!);
+                }
+                else
+                {
+                    UpdateDetectedState(card);
+                }
             }
 
             if (isNew)
@@ -205,7 +252,7 @@ public sealed partial class MainWindow : Window
                 {
                     ShowWindow();
                 }
-                if (_settings.AutoTransfer)
+                if (_settings.AutoTransfer && _destinationAvailable && media.Count > 0)
                 {
                     await StartTransferAsync();
                 }
@@ -228,21 +275,38 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        if (!_destinationAvailable)
+        {
+            ShowError("Choose a destination", "Select an available destination folder before transferring.");
+            return;
+        }
         if (_currentCard is null)
         {
             await ScanCardsAsync();
             if (_currentCard is null)
             {
-                ShowMessage("No camera card found", "Connect a card containing DCIM, M4ROOT, or PRIVATE folders.", InfoBarSeverity.Informational);
+                ShowMessage(
+                    "No camera card found",
+                    "Connect a removable card containing DCIM, M4ROOT, or PRIVATE folders.",
+                    InfoBarSeverity.Informational);
                 return;
             }
+        }
+        if (_lastScannedMediaCount == 0)
+        {
+            ShowMessage(
+                "No supported media found",
+                "This card does not currently contain supported photos or videos.",
+                InfoBarSeverity.Informational);
+            return;
         }
 
         _busy = true;
         _operationCancellation = new CancellationTokenSource();
+        StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: true);
-        HeroTitleText.Text = "Moving your shoot.";
-        HeroSubtitleText.Text = "Files are copied atomically and verified before they become available for erase.";
+        HeroTitleText.Text = "Copying and verifying your media.";
+        HeroSubtitleText.Text = "Each file is written safely, checked with SHA-256, then made visible at the destination.";
         SetTopStatus("Transfer active", Color.FromArgb(255, 255, 77, 68));
         AddActivity($"Transfer started from {_currentCard.RootPath}");
 
@@ -257,22 +321,35 @@ public sealed partial class MainWindow : Window
                 _operationCancellation.Token);
             _verifiedSession = result.Session;
             WipeButton.IsEnabled = true;
-            WipeDescriptionText.Text = "Unlocked. Every remaining camera file has a matching verified destination copy.";
+            WipeDescriptionText.Text = "Unlocked. Every remaining media file has a verified destination copy.";
             HeroTitleText.Text = "Transfer verified.";
-            HeroSubtitleText.Text = $"{result.Session.TotalFiles:N0} files are safe in Camera. You can now erase every remaining item on the card.";
+            HeroSubtitleText.Text =
+                $"{result.Session.TotalFiles:N0} files are verified at the selected destination. The card can now be erased.";
             SetTopStatus("Transfer verified", Color.FromArgb(255, 56, 166, 92));
-            AddActivity($"Verified {result.Session.TotalFiles:N0} files — {result.Session.CopiedCount:N0} copied, {result.Session.SkippedCount:N0} already safe.");
-            ShowNotification("Transfer verified", $"{result.Session.TotalFiles:N0} files are safe in Camera.");
-            ShowMessage("Transfer verified", "Every remaining camera file matches its destination copy.", InfoBarSeverity.Success);
+            AddActivity(
+                $"Verified {result.Session.TotalFiles:N0} files — " +
+                $"{result.Session.CopiedCount:N0} copied, {result.Session.SkippedCount:N0} already safe.");
+            ShowNotification(
+                "Transfer verified",
+                $"{result.Session.TotalFiles:N0} files are verified at the selected destination.");
+            ShowMessage(
+                "Transfer verified",
+                "Every remaining media file matches its destination copy.",
+                InfoBarSeverity.Success);
         }
         catch (OperationCanceledException)
         {
             PhaseText.Text = "CANCELLED";
-            AddActivity("Transfer cancelled. Completed files remain verified; partial files were removed.");
+            AddActivity("Transfer cancelled. Completed files remain safe; temporary files were removed.");
             SetTopStatus("Transfer cancelled", Color.FromArgb(255, 202, 139, 39));
+            ShowMessage(
+                "Transfer cancelled",
+                "Completed destination files were kept and temporary files were removed.",
+                InfoBarSeverity.Warning);
         }
         catch (Exception exception)
         {
+            PhaseText.Text = "NEEDS ATTENTION";
             ShowError("Transfer failed", exception.Message);
             AddActivity("Transfer failed: " + exception.Message);
             await _logger.WriteAsync("Transfer failed: " + exception);
@@ -280,6 +357,7 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
+            TransferProgress.IsIndeterminate = false;
             _operationCancellation.Dispose();
             _operationCancellation = null;
             _busy = false;
@@ -306,7 +384,10 @@ public sealed partial class MainWindow : Window
         var content = new StackPanel { Spacing = 14 };
         content.Children.Add(new TextBlock
         {
-            Text = "Media Shuttle will first re-verify every remaining camera file against its destination copy. It will then remove all card content, including camera databases and non-media files. Windows-managed volume folders may be recreated automatically.",
+            Text =
+                "Media Shuttle will re-verify every remaining media file against its destination copy. " +
+                "It will then remove all card content, including camera databases and non-media files. " +
+                "Windows-managed volume folders may be recreated automatically.",
             TextWrapping = TextWrapping.Wrap
         });
         content.Children.Add(phrase);
@@ -315,7 +396,7 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             XamlRoot = Root.XamlRoot,
-            Title = "Erase everything on this card?",
+            Title = "Erase everything on card?",
             Content = content,
             PrimaryButtonText = "Erase card contents",
             CloseButtonText = "Cancel",
@@ -324,7 +405,7 @@ public sealed partial class MainWindow : Window
         };
         void Validate(object? sender, object args) =>
             dialog.IsPrimaryButtonEnabled =
-                phrase.Text.Trim().Equals("ERASE EVERYTHING", StringComparison.OrdinalIgnoreCase) &&
+                phrase.Text.Trim().Equals("ERASE EVERYTHING", StringComparison.Ordinal) &&
                 acknowledge.IsChecked == true;
         phrase.TextChanged += Validate;
         acknowledge.Checked += Validate;
@@ -335,10 +416,11 @@ public sealed partial class MainWindow : Window
         }
 
         _busy = true;
+        StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: false);
         WipeButton.IsEnabled = false;
-        HeroTitleText.Text = "Clearing the card.";
-        HeroSubtitleText.Text = "Every remaining file is being re-verified before card contents are removed.";
+        HeroTitleText.Text = "Re-verifying before erase.";
+        HeroSubtitleText.Text = "Deletion starts only after every remaining media file matches its destination copy.";
         SetTopStatus("Erase active", Color.FromArgb(255, 255, 77, 68));
         AddActivity("Erase approved. Re-verifying card media before deletion.");
 
@@ -350,15 +432,20 @@ public sealed partial class MainWindow : Window
                 _verifiedSession,
                 progress,
                 CancellationToken.None);
-            HeroTitleText.Text = "Card contents erased.";
-            HeroSubtitleText.Text = "All user and camera content was removed. Windows may retain or recreate protected volume folders.";
-            WipeDescriptionText.Text = "Card erase completed and a final media scan found nothing remaining.";
-            SetTopStatus("Card empty", Color.FromArgb(255, 56, 166, 92));
-            AddActivity($"Erase complete. {result.DeletedFiles:N0} files removed; post-erase scan is empty.");
-            ShowNotification("Card contents erased", $"{result.DeletedFiles:N0} files were removed successfully.");
-            ShowMessage("Card contents erased", "The post-erase verification found no remaining media or user content.", InfoBarSeverity.Success);
             _verifiedSession = null;
-            _currentCard = null;
+            _lastScannedMediaCount = 0;
+            HeroTitleText.Text = "Card contents erased.";
+            HeroSubtitleText.Text =
+                "The post-erase scan found no remaining media or user content. The card is ready for the camera.";
+            TransferButton.Content = "No media found";
+            WipeDescriptionText.Text = "Erase complete. Connect another card or use this card in your camera.";
+            SetTopStatus("Card empty", Color.FromArgb(255, 56, 166, 92));
+            AddActivity($"Erase complete. {result.DeletedFiles:N0} files removed; post-erase scan empty.");
+            ShowNotification("Card contents erased", $"{result.DeletedFiles:N0} files removed successfully.");
+            ShowMessage(
+                "Card contents erased",
+                "The post-erase verification found no remaining media or user content.",
+                InfoBarSeverity.Success);
         }
         catch (Exception exception)
         {
@@ -366,7 +453,7 @@ public sealed partial class MainWindow : Window
             AddActivity("Erase stopped: " + exception.Message);
             await _logger.WriteAsync("Card erase failed: " + exception);
             SetTopStatus("Erase needs attention", Color.FromArgb(255, 196, 43, 43));
-            WipeButton.IsEnabled = true;
+            WipeButton.IsEnabled = _verifiedSession is not null;
         }
         finally
         {
@@ -377,6 +464,7 @@ public sealed partial class MainWindow : Window
 
     private void UpdateProgress(OperationProgress progress)
     {
+        TransferProgress.IsIndeterminate = progress.Phase == OperationPhase.Scanning;
         PhaseText.Text = progress.Phase switch
         {
             OperationPhase.CheckingDuplicate => "CHECKING DUPLICATE",
@@ -428,32 +516,71 @@ public sealed partial class MainWindow : Window
 
     private void UpdateDetectedState(CardInfo card)
     {
-        CardLabelText.Text = card.VolumeLabel;
-        CardDetailText.Text = $"{card.RootPath}  •  {card.DriveType} media";
+        UpdateCardSummary(card);
         HeroTitleText.Text = "Card detected.";
-        HeroSubtitleText.Text = "Ready to sort JPEGs, RAWs, and video into your selected destination.";
+        HeroSubtitleText.Text = "Ready to sort and verify the supported media at your selected destination.";
         TransferButton.Content = "Transfer + verify";
-        TransferButton.IsEnabled = !_busy;
+        TransferButton.IsEnabled = !_busy && _destinationAvailable;
+        WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
         SetTopStatus("Media detected", Color.FromArgb(255, 255, 77, 68));
+    }
+
+    private void UpdateVerifiedState(CardInfo card, TransferSession session)
+    {
+        UpdateCardSummary(card);
+        HeroTitleText.Text = "Transfer already verified.";
+        HeroSubtitleText.Text =
+            $"{session.TotalFiles:N0} files have verified destination copies. You can transfer again or erase the card.";
+        TransferButton.Content = "Transfer again";
+        TransferButton.IsEnabled = !_busy && _destinationAvailable;
+        WipeDescriptionText.Text = "Unlocked. Every remaining media file has a verified destination copy.";
+        SetTopStatus("Transfer verified", Color.FromArgb(255, 56, 166, 92));
+    }
+
+    private void UpdateEmptyCardState(CardInfo card, bool canWipe)
+    {
+        UpdateCardSummary(card);
+        HeroTitleText.Text = "No supported media found.";
+        HeroSubtitleText.Text = canWipe
+            ? "No camera media remains. Verified transfer history still protects the erase action."
+            : "The connected card does not currently contain supported photos or videos.";
+        TransferButton.Content = "No media found";
+        TransferButton.IsEnabled = false;
+        WipeDescriptionText.Text = canWipe
+            ? "Unlocked. No supported media remains to re-verify."
+            : "Locked until a transfer completes and every media file is verified.";
+        SetTopStatus(
+            canWipe ? "Transfer verified" : "Card empty",
+            canWipe ? Color.FromArgb(255, 56, 166, 92) : Color.FromArgb(255, 124, 124, 124));
+    }
+
+    private void UpdateCardSummary(CardInfo card)
+    {
+        CardLabelText.Text = card.VolumeLabel;
+        CardDetailText.Text = $"{card.RootPath}  •  Removable media";
     }
 
     private void UpdateDisconnectedState()
     {
         CardLabelText.Text = "No card connected";
-        CardDetailText.Text = "Insert a Sony camera card to begin.";
+        CardDetailText.Text = "Insert a removable camera card to begin.";
         AssetCountText.Text = "—";
         MediaSizeText.Text = "—";
         HeroTitleText.Text = "Ready for your next card.";
-        HeroSubtitleText.Text = "JPEGs, RAWs, and video are sorted automatically. Every file is SHA-256 verified before erase is available.";
+        HeroSubtitleText.Text =
+            "JPEGs, RAWs, and video are sorted automatically. Every media file is SHA-256 verified before erase is available.";
         TransferButton.Content = "Scan for media";
+        TransferButton.IsEnabled = !_busy && _destinationAvailable;
         WipeButton.IsEnabled = false;
-        WipeDescriptionText.Text = "Locked until every remaining camera file has a verified destination copy.";
+        WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
         SetTopStatus("Waiting for media", Color.FromArgb(255, 124, 124, 124));
     }
 
+
     private void SetOperationControls(bool active, bool allowCancel)
     {
-        TransferButton.IsEnabled = !active;
+        TransferButton.IsEnabled =
+            !active && _destinationAvailable && _lastScannedMediaCount != 0;
         CancelButton.Visibility = active && allowCancel ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = active && allowCancel;
         AutoTransferToggle.IsEnabled = !active;
@@ -461,7 +588,9 @@ public sealed partial class MainWindow : Window
         NotificationsToggle.IsEnabled = !active;
         StartupToggle.IsEnabled = !active;
         ChangeDestinationButton.IsEnabled = !active;
+        OpenFolderButton.IsEnabled = !active && _destinationAvailable;
         ThemeComboBox.IsEnabled = !active;
+        SettingsButton.IsEnabled = !active;
     }
 
     private void SetTopStatus(string text, Color color)
@@ -509,7 +638,17 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        string selectedPath = Path.GetFullPath(folder.Path);
+        string selectedPath;
+        try
+        {
+            selectedPath = Path.GetFullPath(folder.Path);
+        }
+        catch (Exception exception) when (IsDestinationException(exception) || exception is ArgumentException)
+        {
+            ShowError("Destination unavailable", exception.Message);
+            return;
+        }
+
         if (_currentCard is not null && IsSameOrChild(selectedPath, _currentCard.RootPath))
         {
             ShowError("Choose a different destination", "The destination cannot be on the connected source card.");
@@ -520,23 +659,30 @@ public sealed partial class MainWindow : Window
             Directory.Exists(Path.Combine(selectedPath, "M4ROOT")) ||
             Directory.Exists(Path.Combine(selectedPath, "PRIVATE")))
         {
-            ShowError("Choose a different destination", "That folder looks like a camera-card root. Choose a folder on your computer instead.");
+            ShowError(
+                "Choose a different destination",
+                "That folder looks like a camera-card root. Choose a folder on the computer instead.");
             return;
         }
 
         try
         {
+            EnsureDestinationFolders(selectedPath);
             _destinationRoot = selectedPath;
-            EnsureDestinationFolders();
+            _destinationAvailable = true;
             UpdateDestinationDisplay();
+            OpenFolderButton.IsEnabled = true;
             _settings.DestinationRoot = _destinationRoot;
             await _stateStore.SaveSettingsAsync(_settings);
             _seenCards.Clear();
             AddActivity($"Destination changed to {_destinationRoot}");
-            ShowMessage("Destination updated", "New transfers will use the selected folder.", InfoBarSeverity.Success);
+            ShowMessage(
+                "Destination updated",
+                "New transfers will use the selected folder.",
+                InfoBarSeverity.Success);
             await ScanCardsAsync();
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsDestinationException(exception))
         {
             ShowError("Destination unavailable", exception.Message);
         }
@@ -566,13 +712,16 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    private void EnsureDestinationFolders()
+    private static void EnsureDestinationFolders(string destinationRoot)
     {
-        Directory.CreateDirectory(Path.Combine(_destinationRoot, "Photos", "JPEGs"));
-        Directory.CreateDirectory(Path.Combine(_destinationRoot, "Photos", "RAWs"));
-        Directory.CreateDirectory(Path.Combine(_destinationRoot, "Photos", "Other"));
-        Directory.CreateDirectory(Path.Combine(_destinationRoot, "Videos"));
+        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "JPEGs"));
+        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "RAWs"));
+        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "Other"));
+        Directory.CreateDirectory(Path.Combine(destinationRoot, "Videos"));
     }
+
+    private static bool IsDestinationException(Exception exception) =>
+        exception is IOException or UnauthorizedAccessException or NotSupportedException;
 
     private void UpdateDestinationDisplay()
     {
@@ -593,8 +742,26 @@ public sealed partial class MainWindow : Window
 
     private void OpenDestinationFolder()
     {
-        Directory.CreateDirectory(_destinationRoot);
-        Process.Start(new ProcessStartInfo(_destinationRoot) { UseShellExecute = true });
+        if (!_destinationAvailable)
+        {
+            ShowError("Destination unavailable", "Choose an available destination folder first.");
+            return;
+        }
+
+        try
+        {
+            EnsureDestinationFolders(_destinationRoot);
+            Process.Start(new ProcessStartInfo(_destinationRoot) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (
+            IsDestinationException(exception) || exception is Win32Exception)
+        {
+            _destinationAvailable = false;
+            SetOperationControls(false, allowCancel: false);
+            ShowError("Destination unavailable", exception.Message);
+            AddActivity("Destination unavailable: " + exception.Message);
+            SetTopStatus("Choose a destination", Color.FromArgb(255, 196, 43, 43));
+        }
     }
 
     private void ShowWindow()
@@ -606,6 +773,16 @@ public sealed partial class MainWindow : Window
 
     private void ExitApplication()
     {
+        if (_busy)
+        {
+            ShowWindow();
+            ShowMessage(
+                "Operation in progress",
+                "Wait for the current operation to finish, or cancel the transfer before exiting.",
+                InfoBarSeverity.Warning);
+            return;
+        }
+
         _allowClose = true;
         _scanTimer.Stop();
         _trayIcon.Dispose();

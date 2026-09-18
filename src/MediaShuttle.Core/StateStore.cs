@@ -67,15 +67,19 @@ public sealed class StateStore
                     stream,
                     JsonOptions,
                     cancellationToken).ConfigureAwait(false);
-                if (session is not null &&
-                    session.Status.Equals("Verified", StringComparison.OrdinalIgnoreCase) &&
-                    session.Files.Count > 0 &&
-                    SameRoot(session.SourceRoot, card.RootPath) &&
-                    (session.SourceVolumeSerial == 0 || card.VolumeSerial == 0 ||
-                     session.SourceVolumeSerial == card.VolumeSerial))
+                if (session is null ||
+                    !SameRoot(session.SourceRoot, card.RootPath) ||
+                    (session.SourceVolumeSerial != 0 &&
+                     card.VolumeSerial != 0 &&
+                     session.SourceVolumeSerial != card.VolumeSerial))
                 {
-                    return session;
+                    continue;
                 }
+
+                return session.Status.Equals("Verified", StringComparison.OrdinalIgnoreCase) &&
+                       session.Files.Count > 0
+                    ? session
+                    : null;
             }
             catch (JsonException)
             {

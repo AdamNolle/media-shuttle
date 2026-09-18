@@ -107,7 +107,7 @@ public static class MediaClassifier
 
             foreach (string child in directories)
             {
-                if (ScanExcludedDirectories.Contains(Path.GetFileName(child)))
+            if (ScanExcludedDirectories.Contains(Path.GetFileName(child)) || IsReparsePoint(child))
                 {
                     continue;
                 }
@@ -116,6 +116,22 @@ public static class MediaClassifier
         }
 
         return results.OrderBy(item => item.SourcePath, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static bool IsReparsePoint(string path)
+    {
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
+        }
     }
 
     public static string DestinationFolder(MediaKind kind) => kind switch

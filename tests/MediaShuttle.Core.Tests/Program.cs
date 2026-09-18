@@ -38,6 +38,12 @@ internal static class Program
         Directory.CreateDirectory(Path.Combine(cardRoot, "DCIM", "100MSDCF"));
         Directory.CreateDirectory(Path.Combine(cardRoot, "PRIVATE", "M4ROOT", "CLIP"));
         Directory.CreateDirectory(destinationRoot);
+        string stalePartial = Path.Combine(
+            destinationRoot,
+            "orphan.JPG.partial-0123456789abcdef0123456789abcdef");
+        string unrelatedPartial = Path.Combine(destinationRoot, "keep.partial-draft");
+        await File.WriteAllTextAsync(stalePartial, "stale interrupted transfer");
+        await File.WriteAllTextAsync(unrelatedPartial, "user file");
 
         string jpeg = Path.Combine(cardRoot, "DCIM", "100MSDCF", "DSC00001.JPG");
         string raw = Path.Combine(cardRoot, "DCIM", "100MSDCF", "DSC00001.ARW");
@@ -76,6 +82,9 @@ internal static class Program
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "JPEGs", "DSC00001.JPG")), "JPEG destination");
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "RAWs", "DSC00001.ARW")), "RAW destination");
         Assert(File.Exists(Path.Combine(destinationRoot, "Videos", "C0001.MP4")), "Video destination");
+        Assert(Directory.Exists(Path.Combine(destinationRoot, "Photos", "Other")), "Other-photo destination exists");
+        Assert(!File.Exists(stalePartial), "Stale Media Shuttle partial is cleaned up");
+        Assert(File.Exists(unrelatedPartial), "Unrelated partial-like filename is preserved");
 
         TransferResult duplicate = await transfer.TransferAsync(card, destinationRoot, false, null, CancellationToken.None);
         Assert(duplicate.Session.CopiedCount == 0, "Duplicate rerun copies nothing");
@@ -119,6 +128,7 @@ internal static class Program
         string[] remaining = Directory.GetFileSystemEntries(cardRoot);
         Assert(remaining.Length == 1 && Path.GetFileName(remaining[0]) == "System Volume Information", "Only Windows-managed volume folder remains");
         Assert(MediaClassifier.Scan(cardRoot).Count == 0, "Post-erase media scan is empty");
+        Assert(await stateStore.LoadLatestVerifiedForCardAsync(card) is null, "Erased session keeps older transfers locked");
     }
 
     private static void Assert(bool condition, string message)

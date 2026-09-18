@@ -7,30 +7,51 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
-            <Color x:Key="SpeedRed">#FFFF4D44</Color>
-            <Color x:Key="SpeedRedHover">#FFE5423A</Color>
-            <Color x:Key="SpeedRedPressed">#FFC9342D</Color>
-            <SolidColorBrush x:Key="SpeedRedBrush" Color="{StaticResource SpeedRed}" />
-            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="{StaticResource SpeedRed}" />
-            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="{StaticResource SpeedRedHover}" />
-            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="{StaticResource SpeedRedPressed}" />
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFFF625A" />
+                    <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#14FF625A" />
+                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#FFE5423A" />
+                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#FFFFFFFF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#0FD33B34" />
+                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#FFC9342D" />
+                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#FFFFFFFF" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FFD33B34" />
+            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#FFC9342D" />
+            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#FFB92D27" />
             <SolidColorBrush x:Key="AccentFillColorDisabledBrush" Color="#667F7F7F" />
             <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="CharacterSpacing" Value="80" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="100" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
             </Style>
             <Style x:Key="MetricValueStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="20" />
+                <Setter Property="FontSize" Value="22" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="PanelBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="CornerRadius" Value="10" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

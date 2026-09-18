@@ -15,6 +15,7 @@ public static class CardDetector
             try
             {
                 if (!drive.IsReady ||
+                    drive.DriveType != DriveType.Removable ||
                     drive.RootDirectory.FullName.Equals(destinationDrive, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
