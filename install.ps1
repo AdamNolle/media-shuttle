@@ -10,7 +10,7 @@ $cameraRoot = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Camera'
 $installRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\Media Shuttle'
 $expectedInstallRoot = 'C:\Users\' + [Environment]::UserName + '\AppData\Local\Programs\Media Shuttle'
 
-& (Join-Path $repoRoot 'build.ps1') -Clean
+& (Join-Path $repoRoot 'build.ps1') -Clean -SkipInstaller
 
 foreach ($directory in @(
     $cameraRoot,
