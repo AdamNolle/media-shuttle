@@ -480,10 +480,14 @@ if (-not [IO.Directory]::Exists($DataRoot)) { [void][IO.Directory]::CreateDirect
 [void][IO.Directory]::CreateDirectory((Join-Path $DataRoot 'Photos\JPEGs'))
 [void][IO.Directory]::CreateDirectory((Join-Path $DataRoot 'Photos\RAWs'))
 [void][IO.Directory]::CreateDirectory((Join-Path $DataRoot 'Videos'))
-$appDataRoot = Join-Path $DataRoot '.sony-media-shuttle'
+if (-not [string]::IsNullOrWhiteSpace($RenderPreview)) {
+    $appDataRoot = Join-Path $DataRoot '.sony-media-shuttle'
+}
+else {
+    $appDataRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Media Shuttle'
+}
 $sessionsRoot = Join-Path $appDataRoot 'sessions'
 [void][IO.Directory]::CreateDirectory($sessionsRoot)
-try { (Get-Item -LiteralPath $appDataRoot -Force).Attributes = (Get-Item -LiteralPath $appDataRoot -Force).Attributes -bor [IO.FileAttributes]::Hidden } catch {}
 $settingsPath = Join-Path $appDataRoot 'settings.json'
 $appLogPath = Join-Path $appDataRoot 'app.log'
 

@@ -54,7 +54,8 @@ To build and install it for the current Windows user:
 ```
 
 This creates a clickable `Media Shuttle` shortcut on the Desktop and in the
-Start Menu. The installed application lives inside `Desktop\Camera`.
+Start Menu. The installed runtime lives in the current user's local app-data
+folder, keeping `Desktop\Camera` clean and media-only.
 
 To run the engine self-test directly:
 
@@ -75,4 +76,3 @@ command.
 - Windows 10 or Windows 11
 - Windows PowerShell 5.1
 - .NET Framework 4.x
-

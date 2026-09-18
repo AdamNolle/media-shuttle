@@ -7,13 +7,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
 $distRoot = Join-Path $repoRoot 'dist'
 $cameraRoot = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Camera'
-$installRoot = Join-Path $cameraRoot 'Sony Media Shuttle'
+$installRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\Media Shuttle'
 
 & (Join-Path $repoRoot 'build.ps1') -Clean
 
 foreach ($directory in @(
-    $cameraRoot,
     $installRoot,
+    $cameraRoot,
     (Join-Path $cameraRoot 'Photos\JPEGs'),
     (Join-Path $cameraRoot 'Photos\RAWs'),
     (Join-Path $cameraRoot 'Videos')
@@ -47,4 +47,3 @@ if ($EnableStartup) {
 }
 
 Write-Output "Installed Media Shuttle to $installRoot"
-
