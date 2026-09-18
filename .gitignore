@@ -1,8 +1,8 @@
 .vs/
+**/bin/
+**/obj/
+artifacts/
 *.user
 *.suo
 *.pdb
 *.partial-*
-dist/*
-!dist/.gitkeep
-

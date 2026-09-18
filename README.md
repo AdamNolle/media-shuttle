@@ -1,78 +1,103 @@
 # Media Shuttle
 
-A focused Windows ingest utility for Sony camera cards. Media Shuttle watches
-for a camera-style `DCIM`, `M4ROOT`, or `PRIVATE` layout, then copies and
-verifies media into a clean editing structure:
+Media Shuttle is a native Windows camera-media ingest app built with WinUI 3. Connect camera storage, verify the detected media, and send it to a clean editing layout in any destination folder you choose:
 
 ```text
-Desktop/Camera/
-|-- Photos/
-|   |-- JPEGs/
-|   |-- RAWs/
-|   `-- Other/
-`-- Videos/
+Your destination\
+├── Photos\
+│   ├── JPEGs\
+│   ├── RAWs\
+│   └── Other\
+└── Videos\
 ```
 
-## Highlights
+The default destination is `Desktop\Camera`, and the selection is remembered.
 
-- Clickable `MediaShuttle.exe` launcher with a native app icon and no console.
-- Clicking the launcher again restores the running app window.
-- Automatic card detection with a Windows startup option.
-- Atomic copies: incomplete files retain a `.partial-*` suffix and are never
-  presented as completed media.
-- SHA-256 verification of every transferred file.
-- Duplicate detection that hashes an existing destination before skipping it.
-- Collision-safe numbered names; existing files are never overwritten.
-- Explicit safe erase unlocked only after a verified transfer. The app
-  re-verifies card files before deleting them and preserves Sony card folders.
-- macOS AppleDouble files beginning with `._` are ignored.
+## What it does
 
-## Supported formats
+- Watches removable drives for Sony-style `DCIM`, `M4ROOT`, and `PRIVATE` media layouts.
+- Sorts JPG/JPEG into `Photos\JPEGs`, ARW/DNG into `Photos\RAWs`, other still formats into `Photos\Other`, and video into `Videos`.
+- Lets you choose and persist any accessible destination folder on the computer.
+- Offers System, Light, and Dark appearance modes.
+- Optionally groups each category into `YYYY-MM-DD` folders.
+- Writes through a uniquely named `.partial-*` file so an interrupted copy is never presented as complete.
+- SHA-256 verifies every destination file before recording the transfer as safe.
+- Detects identical existing files and verifies them instead of copying duplicates.
+- Preserves existing files by generating numbered names when the contents differ.
+- Can start with Windows, watch in the notification area, and transfer automatically.
 
-Photos: ARW, JPG, JPEG, HEIF, HEIC, HIF, DNG, TIFF, TIF, PNG
+## Safe full-card erase
 
-Video: MP4, MOV, MXF, MTS, M2TS, AVI
+Erase is deliberately gated. It becomes available only after Media Shuttle has a verified transfer session for the connected volume. Immediately before deletion, the app:
 
-ARW and DNG files go to `Photos/RAWs`. JPG and JPEG files go to
-`Photos/JPEGs`. Other supported still formats go to `Photos/Other`.
+1. confirms the volume root and volume serial number;
+2. rescans every remaining supported media file;
+3. verifies that each file belongs to the transfer session;
+4. recalculates SHA-256 for both the card file and destination copy;
+5. blocks the erase if any file is new, missing, changed, or unverifiable.
 
-## Build
+The confirmation dialog requires both an acknowledgment checkbox and the typed phrase `ERASE EVERYTHING`.
 
-Open Windows PowerShell in the repository and run:
+When confirmed, Media Shuttle removes all user content from the card—not only photos and videos—including camera databases and sidecar folders. Read-only and hidden attributes are cleared before deletion, fixing erase failures caused by protected camera files. Windows may preserve or recreate `$RECYCLE.BIN` and `System Volume Information`; only those Windows-managed folders are accepted by the final post-erase scan.
+
+This is a file-level erase, not a filesystem format. For a freshly initialized camera filesystem, use the camera's own Format command after the files are safely transferred.
+
+## Supported media
+
+- JPEG: JPG, JPEG
+- RAW: ARW, DNG
+- Other photos: HEIF, HEIC, HIF, TIF, TIFF, PNG
+- Video: MP4, MOV, MXF, MTS, M2TS, AVI
+
+macOS AppleDouble sidecars whose names begin with `._` are ignored during ingest.
+
+## Install a release
+
+Download `MediaShuttle-v2.0.0-win-x64.zip` from the Releases page, extract it, and run `MediaShuttle.exe`. The release is self-contained for Windows 10/11 x64 and does not require a separate .NET installation.
+
+## Build from source
+
+Requirements:
+
+- Windows 10 version 1809 or later, or Windows 11
+- Windows x64
+- .NET 8 SDK or later
+- PowerShell 5.1 or later
+
+From the repository root:
 
 ```powershell
 .\build.ps1 -Clean
 ```
 
-The build uses the Windows .NET Framework C# compiler already included with
-Windows. Output is written to `dist/`.
+The build restores the official Microsoft Windows App SDK, generates the fast-card icon, runs the core safety tests, publishes a self-contained WinUI 3 build, and creates:
 
-To build and install it for the current Windows user:
+```text
+artifacts\MediaShuttle-v2.0.0-win-x64.zip
+```
+
+To build and install for the current Windows user:
 
 ```powershell
 .\install.ps1 -EnableStartup
 ```
 
-This creates a clickable `Media Shuttle` shortcut on the Desktop and in the
-Start Menu. The installed runtime lives in the current user's local app-data
-folder, keeping `Desktop\Camera` clean and media-only.
+The installer places the app in `%LOCALAPPDATA%\Programs\Media Shuttle`, creates Desktop and Start Menu shortcuts, and optionally enables background startup. The media destination contains media folders only.
 
-To run the engine self-test directly:
+## Test
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -STA `
-  -File '.\src\App\Sony Media Shuttle.ps1' -SelfTest
+dotnet run --project .\tests\MediaShuttle.Core.Tests\MediaShuttle.Core.Tests.csproj -c Release
 ```
 
-## Safety model
+The test harness covers classification, settings persistence, verified copy, duplicate detection, collision handling, unverified-file blocking, read-only-file erase, non-media cleanup, and post-erase verification.
 
-Media Shuttle does not format cards. Safe erase only removes media recorded in
-the latest verified session, after matching each source file's size and
-SHA-256 hash again. For a true filesystem reformat, use the camera's own Format
-command.
+## Data and logs
 
-## Requirements
+Settings, transfer records, and logs are stored in:
 
-- Windows 10 or Windows 11
-- Windows PowerShell 5.1
-- .NET Framework 4.x
+```text
+%LOCALAPPDATA%\Media Shuttle
+```
+
+No telemetry or cloud service is used.
