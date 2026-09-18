@@ -100,9 +100,9 @@ followed while scanning or erasing a card.
 
 Media Shuttle requires macOS 14 Sonoma or newer.
 
-1. Download `MediaShuttle-v*-macOS-universal.zip` from
+1. Download `MediaShuttle-v*-macOS-universal.dmg` from
    [GitHub Releases](https://github.com/AdamNolle/media-shuttle/releases).
-2. Unzip it and move **Media Shuttle.app** to `/Applications`.
+2. Open the disk image and drag **Media Shuttle.app** into the **Applications** shortcut.
 3. Open Media Shuttle, choose a destination, and connect a camera card.
 
 Community builds are ad-hoc signed unless a release maintainer supplies a Developer ID certificate.

@@ -37,9 +37,11 @@ struct ContentView: View {
         .frame(minWidth: 960, minHeight: 650)
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Label("Media Shuttle", systemImage: "arrow.triangle.2.circlepath.camera")
-                    .font(.headline)
-                    .symbolRenderingMode(.hierarchical)
+                HStack(spacing: 7) {
+                    AppMark(diameter: 18, showsConnectedDot: model.currentCard != nil)
+                    Text("Media Shuttle")
+                        .font(.headline)
+                }
             }
             ToolbarItem(placement: .principal) {
                 StatusPill(text: model.topStatus, tone: model.statusTone)

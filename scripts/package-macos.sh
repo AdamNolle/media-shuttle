@@ -36,12 +36,28 @@ xattr -cr "$APP"
 codesign --force --deep --options runtime --sign "$IDENTITY" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
-ARCHIVE="$ARTIFACTS/MediaShuttle-v$VERSION-macOS-universal.zip"
-rm -f "$ARCHIVE" "$ARTIFACTS/SHA256SUMS.txt"
-ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
+DMG="$ARTIFACTS/MediaShuttle-v$VERSION-macOS-universal.dmg"
+STAGING="$BUILD_ROOT/dmg-staging"
+rm -f "$DMG" "$ARTIFACTS/SHA256SUMS.txt"
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+ditto "$APP" "$STAGING/Media Shuttle.app"
+ln -s /Applications "$STAGING/Applications"
+
+hdiutil create \
+    -volname "Media Shuttle" \
+    -srcfolder "$STAGING" \
+    -fs HFS+ \
+    -format UDZO \
+    -ov \
+    "$DMG"
+
+codesign --force --sign "$IDENTITY" "$DMG"
+codesign --verify --verbose=2 "$DMG"
+
 (
     cd "$ARTIFACTS"
-    shasum -a 256 "$(basename "$ARCHIVE")" > SHA256SUMS.txt
+    shasum -a 256 "$(basename "$DMG")" > SHA256SUMS.txt
 )
 
-printf 'Created %s\n' "$ARCHIVE"
+printf 'Created %s\n' "$DMG"

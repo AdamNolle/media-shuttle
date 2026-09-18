@@ -5,6 +5,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+
+        // The packaged .app gets its Dock icon from Info.plist's CFBundleIconFile
+        // (Resources/AppIcon.icns, applied by scripts/package-macos.sh). That key is
+        // inert for unbundled dev runs (`swift run`), so render the same brand mark
+        // at launch to keep the Dock icon consistent while developing.
+        if Bundle.main.bundleURL.pathExtension != "app" {
+            NSApp.applicationIconImage = AppMark.renderedDockIcon()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -23,10 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct MediaShuttleApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
-
-    private var menuBarSymbol: String {
-        model.canWipe ? "checkmark.shield.fill" : "externaldrive.badge.timemachine"
-    }
 
     var body: some Scene {
         WindowGroup("Media Shuttle", id: "main") {
@@ -64,7 +68,7 @@ struct MediaShuttleApp: App {
         MenuBarExtra {
             MenuBarView(model: model)
         } label: {
-            Label("Media Shuttle", systemImage: menuBarSymbol)
+            AppMark.menuBarGlyph
         }
         .menuBarExtraStyle(.menu)
     }
