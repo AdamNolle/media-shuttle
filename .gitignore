@@ -1,0 +1,8 @@
+.vs/
+*.user
+*.suo
+*.pdb
+*.partial-*
+dist/*
+!dist/.gitkeep
+
