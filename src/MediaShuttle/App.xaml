@@ -12,29 +12,108 @@
                     <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFFF625A" />
                     <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
                     <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#14FF625A" />
-                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#FFE5423A" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FFE34B43" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FF494343" />
+                    <SolidColorBrush x:Key="PrimaryActionForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPointerOver" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPressed" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF9F9999" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FFFF7770" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FFFF8B85" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FF5D5656" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF202420" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF56B870" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FF0E1C12" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFD33B34" />
                     <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
                     <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#0FD33B34" />
-                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#FFC9342D" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FFC9342D" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FFE3DEDE" />
+                    <SolidColorBrush x:Key="PrimaryActionForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPointerOver" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPressed" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF817B7B" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FFD33B34" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FFC9342D" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FFB92D27" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FFC8C1C1" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFF2F5F2" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF287A40" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FFFFFFFF" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FFD33B34" />
             <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#FFC9342D" />
             <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#FFB92D27" />
             <SolidColorBrush x:Key="AccentFillColorDisabledBrush" Color="#667F7F7F" />
+            <Style x:Key="PrimaryTransferButtonStyle" TargetType="Button">
+                <Setter Property="Foreground" Value="{ThemeResource PrimaryActionForeground}" />
+                <Setter Property="Background" Value="{ThemeResource PrimaryActionBackground}" />
+                <Setter Property="BackgroundSizing" Value="OuterBorderEdge" />
+                <Setter Property="BorderBrush" Value="{ThemeResource PrimaryActionBorderBrush}" />
+                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SpeedRedBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <ContentPresenter
+                                x:Name="ContentPresenter"
+                                AutomationProperties.AccessibilityView="Raw"
+                                Background="{TemplateBinding Background}"
+                                BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                ContentTransitions="{TemplateBinding ContentTransitions}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Foreground="{TemplateBinding Foreground}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                Padding="{TemplateBinding Padding}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}">
+                                <ContentPresenter.BackgroundTransition>
+                                    <BrushTransition Duration="0:0:0.083" />
+                                </ContentPresenter.BackgroundTransition>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Background" Value="{ThemeResource PrimaryActionBackgroundPointerOver}" />
+                                                <Setter Target="ContentPresenter.BorderBrush" Value="{ThemeResource PrimaryActionBorderBrushPointerOver}" />
+                                                <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource PrimaryActionForegroundPointerOver}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Background" Value="{ThemeResource PrimaryActionBackgroundPressed}" />
+                                                <Setter Target="ContentPresenter.BorderBrush" Value="{ThemeResource PrimaryActionBorderBrushPressed}" />
+                                                <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource PrimaryActionForegroundPressed}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Background" Value="{ThemeResource PrimaryActionBackgroundDisabled}" />
+                                                <Setter Target="ContentPresenter.BorderBrush" Value="{ThemeResource PrimaryActionBorderBrushDisabled}" />
+                                                <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource PrimaryActionForegroundDisabled}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </ContentPresenter>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Consolas" />
                 <Setter Property="FontSize" Value="11" />

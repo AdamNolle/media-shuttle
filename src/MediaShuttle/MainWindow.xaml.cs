@@ -24,7 +24,7 @@ public sealed partial class MainWindow : Window
     private readonly TransferService _transferService;
     private readonly WipeService _wipeService;
     private readonly ObservableCollection<string> _activity = [];
-    private readonly HashSet<string> _seenCards = new(StringComparer.OrdinalIgnoreCase);
+    private readonly CardPresenceTracker _cardPresence = new();
     private readonly DispatcherQueueTimer _scanTimer;
     private readonly TrayIconService _trayIcon;
     private readonly AppWindow _appWindow;
@@ -66,8 +66,16 @@ public sealed partial class MainWindow : Window
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
         _appWindow.Title = "Media Shuttle";
         SizeAndCenterWindow(windowHandle);
-        _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-        _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        _appWindow.Changed += (_, args) =>
+        {
+            if (args.DidSizeChange)
+            {
+                UpdateResponsiveLayout(windowHandle);
+            }
+        };
+        UpdateResponsiveLayout(windowHandle);
+        Root.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
+        UpdateTitleBarColors();
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "MediaShuttle.ico");
         if (File.Exists(iconPath))
         {
@@ -119,11 +127,38 @@ public sealed partial class MainWindow : Window
         int maximumWidth = Math.Max(720, workArea.Width - edgeMargin * 2);
         int maximumHeight = Math.Max(560, workArea.Height - edgeMargin * 2);
         int width = Math.Min((int)Math.Round(1180 * scale), maximumWidth);
-        int height = Math.Min((int)Math.Round(720 * scale), maximumHeight);
+        int height = Math.Min((int)Math.Round(660 * scale), maximumHeight);
         int x = workArea.X + Math.Max(0, (workArea.Width - width) / 2);
         int y = workArea.Y + Math.Max(0, (workArea.Height - height) / 2);
 
         _appWindow.MoveAndResize(new RectInt32(x, y, width, height));
+    }
+
+    private void UpdateResponsiveLayout(IntPtr windowHandle)
+    {
+        double scale = Math.Max(1.0, NativeMethods.GetDpiForWindow(windowHandle) / 96.0);
+        double width = _appWindow.Size.Width / scale;
+        bool narrow = width < 900;
+
+        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(286);
+        OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(SourcePanel, 0);
+        Grid.SetRow(SourcePanel, 0);
+        Grid.SetColumn(OperationsPanel, narrow ? 0 : 1);
+        Grid.SetRow(OperationsPanel, narrow ? 1 : 0);
+        MainLayout.ColumnSpacing = narrow ? 0 : 22;
+        MainLayout.Padding = narrow ? new Thickness(16, 14, 16, 22) : new Thickness(24, 22, 24, 26);
+
+        bool compactTitleBar = width < 760;
+        bool iconOnlyTitleBar = width < 520;
+        StatusPill.Visibility = compactTitleBar ? Visibility.Collapsed : Visibility.Visible;
+        AppNameText.Visibility = iconOnlyTitleBar ? Visibility.Collapsed : Visibility.Visible;
+        AppLogo.Width = compactTitleBar ? 36 : 42;
+        AppNameText.FontSize = compactTitleBar ? 16 : 18;
+        SettingsButton.Width = compactTitleBar ? 40 : 44;
+        SettingsButton.Height = compactTitleBar ? 40 : 44;
+        SettingsButton.Margin = compactTitleBar ? new Thickness(4, 0, 0, 0) : new Thickness(10, 0, 0, 0);
+        AppTitleBar.Margin = new Thickness(iconOnlyTitleBar ? 12 : 18, 0, 160, 0);
     }
 
     private async Task InitializeAsync()
@@ -184,7 +219,7 @@ public sealed partial class MainWindow : Window
             SetTopStatus("Choose a destination", Color.FromArgb(255, 196, 43, 43));
         }
 
-        if (_launchInBackground && _currentCard is null && _destinationAvailable)
+        if (_launchInBackground && _destinationAvailable)
         {
             _appWindow.Hide();
         }
@@ -202,7 +237,8 @@ public sealed partial class MainWindow : Window
         {
             IReadOnlyList<CardInfo> cards = await Task.Run(() => CardDetector.GetCandidates(_destinationRoot));
             var activeRoots = cards.Select(card => card.RootPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            _seenCards.RemoveWhere(root => !activeRoots.Contains(root));
+            string? selectedRoot = cards.Count > 0 ? cards[0].RootPath : null;
+            bool isNew = _cardPresence.Observe(selectedRoot, activeRoots);
             if (cards.Count == 0)
             {
                 _currentCard = null;
@@ -213,7 +249,6 @@ public sealed partial class MainWindow : Window
             }
 
             CardInfo card = cards[0];
-            bool isNew = _seenCards.Add(card.RootPath);
             bool cardChanged = _currentCard is null ||
                                !_currentCard.RootPath.Equals(card.RootPath, StringComparison.OrdinalIgnoreCase);
             TransferSession? previousSession = _verifiedSession;
@@ -305,6 +340,7 @@ public sealed partial class MainWindow : Window
         _operationCancellation = new CancellationTokenSource();
         StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: true);
+        TransferButton.Content = "Scanning media…";
         HeroTitleText.Text = "Copying and verifying your media.";
         HeroSubtitleText.Text = "Each file is written safely, checked with SHA-256, then made visible at the destination.";
         SetTopStatus("Transfer active", Color.FromArgb(255, 255, 77, 68));
@@ -320,22 +356,13 @@ public sealed partial class MainWindow : Window
                 progress,
                 _operationCancellation.Token);
             _verifiedSession = result.Session;
-            WipeButton.IsEnabled = true;
-            WipeDescriptionText.Text = "Unlocked. Every remaining media file has a verified destination copy.";
-            HeroTitleText.Text = "Transfer verified.";
-            HeroSubtitleText.Text =
-                $"{result.Session.TotalFiles:N0} files are verified at the selected destination. The card can now be erased.";
-            SetTopStatus("Transfer verified", Color.FromArgb(255, 56, 166, 92));
+            UpdateVerifiedState(_currentCard, result.Session, justCompleted: true);
             AddActivity(
                 $"Verified {result.Session.TotalFiles:N0} files — " +
                 $"{result.Session.CopiedCount:N0} copied, {result.Session.SkippedCount:N0} already safe.");
             ShowNotification(
                 "Transfer verified",
-                $"{result.Session.TotalFiles:N0} files are verified at the selected destination.");
-            ShowMessage(
-                "Transfer verified",
-                "Every remaining media file matches its destination copy.",
-                InfoBarSeverity.Success);
+                $"{result.Session.TotalFiles:N0} files match their destination copies.");
         }
         catch (OperationCanceledException)
         {
@@ -358,6 +385,10 @@ public sealed partial class MainWindow : Window
         finally
         {
             TransferProgress.IsIndeterminate = false;
+            if (_lastScannedMediaCount > 0)
+            {
+                TransferButton.Content = _verifiedSession is null ? "Transfer + verify" : "Transfer again";
+            }
             _operationCancellation.Dispose();
             _operationCancellation = null;
             _busy = false;
@@ -465,6 +496,14 @@ public sealed partial class MainWindow : Window
     private void UpdateProgress(OperationProgress progress)
     {
         TransferProgress.IsIndeterminate = progress.Phase == OperationPhase.Scanning;
+        if (progress.Phase == OperationPhase.Scanning)
+        {
+            TransferButton.Content = "Scanning media…";
+        }
+        else if (progress.Phase is OperationPhase.CheckingDuplicate or OperationPhase.Copying or OperationPhase.Verifying)
+        {
+            TransferButton.Content = "Transfer in progress";
+        }
         PhaseText.Text = progress.Phase switch
         {
             OperationPhase.CheckingDuplicate => "CHECKING DUPLICATE",
@@ -525,16 +564,18 @@ public sealed partial class MainWindow : Window
         SetTopStatus("Media detected", Color.FromArgb(255, 255, 77, 68));
     }
 
-    private void UpdateVerifiedState(CardInfo card, TransferSession session)
+    private void UpdateVerifiedState(CardInfo card, TransferSession session, bool justCompleted = false)
     {
         UpdateCardSummary(card);
-        HeroTitleText.Text = "Transfer already verified.";
-        HeroSubtitleText.Text =
-            $"{session.TotalFiles:N0} files have verified destination copies. You can transfer again or erase the card.";
+        HeroTitleText.Text = justCompleted ? "Transfer verified." : "Transfer already verified.";
+        HeroSubtitleText.Text = justCompleted
+            ? $"{session.TotalFiles:N0} media files match their destination copies. Erase is now available."
+            : $"{session.TotalFiles:N0} media files still match their destination copies. You can transfer again or erase the card.";
         TransferButton.Content = "Transfer again";
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
-        WipeDescriptionText.Text = "Unlocked. Every remaining media file has a verified destination copy.";
-        SetTopStatus("Transfer verified", Color.FromArgb(255, 56, 166, 92));
+        WipeButton.IsEnabled = true;
+        WipeDescriptionText.Text = "Unlocked — every remaining media file has a verified destination copy.";
+        SetTopStatus("Verified", Color.FromArgb(255, 56, 166, 92));
     }
 
     private void UpdateEmptyCardState(CardInfo card, bool canWipe)
@@ -674,7 +715,6 @@ public sealed partial class MainWindow : Window
             OpenFolderButton.IsEnabled = true;
             _settings.DestinationRoot = _destinationRoot;
             await _stateStore.SaveSettingsAsync(_settings);
-            _seenCards.Clear();
             AddActivity($"Destination changed to {_destinationRoot}");
             ShowMessage(
                 "Destination updated",
@@ -710,6 +750,31 @@ public sealed partial class MainWindow : Window
             "Dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+        UpdateTitleBarColors();
+    }
+
+    private void UpdateTitleBarColors()
+    {
+        bool isLight = Root.ActualTheme == ElementTheme.Light;
+        Color foreground = isLight
+            ? Color.FromArgb(255, 31, 31, 31)
+            : Color.FromArgb(255, 255, 255, 255);
+        Color inactiveForeground = isLight
+            ? Color.FromArgb(153, 31, 31, 31)
+            : Color.FromArgb(166, 255, 255, 255);
+
+        _appWindow.TitleBar.ButtonForegroundColor = foreground;
+        _appWindow.TitleBar.ButtonHoverForegroundColor = foreground;
+        _appWindow.TitleBar.ButtonPressedForegroundColor = foreground;
+        _appWindow.TitleBar.ButtonInactiveForegroundColor = inactiveForeground;
+        _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+        _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        _appWindow.TitleBar.ButtonHoverBackgroundColor = isLight
+            ? Color.FromArgb(20, 0, 0, 0)
+            : Color.FromArgb(28, 255, 255, 255);
+        _appWindow.TitleBar.ButtonPressedBackgroundColor = isLight
+            ? Color.FromArgb(36, 0, 0, 0)
+            : Color.FromArgb(48, 255, 255, 255);
     }
 
     private static void EnsureDestinationFolders(string destinationRoot)

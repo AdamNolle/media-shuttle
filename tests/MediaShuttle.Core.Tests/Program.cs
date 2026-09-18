@@ -12,7 +12,7 @@ internal static class Program
         try
         {
             await RunAsync(testRoot);
-            Console.WriteLine($"PASS: {_assertions} assertions covering classification, settings, verified copy, duplicates, collisions, safety blocking, read-only erase, and post-erase verification.");
+            Console.WriteLine($"PASS: {_assertions} assertions covering classification, settings, card-arrival startup safety, verified copy, duplicates, collisions, safety blocking, read-only erase, post-erase verification.");
             return 0;
         }
         catch (Exception exception)
@@ -66,14 +66,46 @@ internal static class Program
         var wipe = new WipeService(stateStore, logger);
         var card = new CardInfo(cardRoot, "TEST CARD", 0, 64L * 1024 * 1024, 48L * 1024 * 1024, "Removable");
 
+        AppSettings newInstallSettings = await stateStore.LoadSettingsAsync();
+        Assert(!newInstallSettings.AutoTransfer, "New installations leave automatic transfer off");
+
+        var mountedAtStartup = new CardPresenceTracker();
+        Assert(
+            !mountedAtStartup.Observe(cardRoot, [cardRoot]),
+            "A card already mounted during the initial scan is baseline, not a new insertion");
+        Assert(
+            !mountedAtStartup.Observe(cardRoot, [cardRoot]),
+            "A continuously mounted card is not reported as a new insertion");
+        Assert(!mountedAtStartup.Observe(null, []), "Removing a card does not report an insertion");
+        Assert(
+            mountedAtStartup.Observe(cardRoot, [cardRoot]),
+            "Reinserting a card after the initial scan is reported as a new insertion");
+
+        string secondCardRoot = Path.Combine(testRoot, "SECOND-CARD");
+        var multipleMountedAtStartup = new CardPresenceTracker();
+        Assert(
+            !multipleMountedAtStartup.Observe(cardRoot, [cardRoot, secondCardRoot]),
+            "Every card present during the initial scan is added to the startup baseline");
+        Assert(
+            !multipleMountedAtStartup.Observe(secondCardRoot, [secondCardRoot]),
+            "A second startup-mounted card is not reported as new when it becomes selected");
+
+        var emptyAtStartup = new CardPresenceTracker();
+        Assert(!emptyAtStartup.Observe(null, []), "An empty initial scan establishes the card baseline");
+        Assert(
+            emptyAtStartup.Observe(cardRoot, [cardRoot]),
+            "A card first seen after an empty initial scan is reported as a new insertion");
+
         await stateStore.SaveSettingsAsync(new AppSettings
         {
             DestinationRoot = destinationRoot,
+            AutoTransfer = true,
             Theme = "Dark"
         });
         AppSettings roundTripSettings = await stateStore.LoadSettingsAsync();
         Assert(roundTripSettings.DestinationRoot == destinationRoot, "Destination setting round trip");
         Assert(roundTripSettings.Theme == "Dark", "Theme setting round trip");
+        Assert(roundTripSettings.AutoTransfer, "Automatic transfer opt-in round trip");
 
         TransferResult first = await transfer.TransferAsync(card, destinationRoot, false, null, CancellationToken.None);
         Assert(first.Session.Status == "Verified", "Transfer reaches verified state");

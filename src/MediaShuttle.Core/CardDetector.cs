@@ -78,3 +78,24 @@ public static class CardDetector
         StringBuilder fileSystemNameBuffer,
         int fileSystemNameSize);
 }
+
+public sealed class CardPresenceTracker
+{
+    private readonly HashSet<string> _seenRoots = new(StringComparer.OrdinalIgnoreCase);
+    private bool _baselineEstablished;
+
+    public bool Observe(string? selectedRoot, IEnumerable<string> activeRoots)
+    {
+        var active = activeRoots.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _seenRoots.RemoveWhere(root => !active.Contains(root));
+
+        if (!_baselineEstablished)
+        {
+            _seenRoots.UnionWith(active);
+            _baselineEstablished = true;
+            return false;
+        }
+
+        return selectedRoot is not null && _seenRoots.Add(selectedRoot);
+    }
+}

@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Viewbox Width="42" Height="30" VerticalAlignment="Center" AutomationProperties.Name="Fast media card logo">
+            <Viewbox x:Name="AppLogo" Width="42" Height="30" VerticalAlignment="Center" AutomationProperties.Name="Fast media card logo">
                 <Canvas Width="76" Height="48">
                     <Line X1="2" Y1="13" X2="25" Y2="13" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                     <Line X1="7" Y1="24" X2="25" Y2="24" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
@@ -31,7 +31,7 @@
                 </Canvas>
             </Viewbox>
 
-            <TextBlock Grid.Column="1" Text="Media Shuttle" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <TextBlock x:Name="AppNameText" Grid.Column="1" Text="Media Shuttle" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
 
             <Border x:Name="StatusPill" Grid.Column="2" Background="{ThemeResource ControlFillColorDefaultBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="15" Padding="11,5" Margin="20,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Media status" AutomationProperties.LiveSetting="Polite">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -78,30 +78,6 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <VisualStateManager.VisualStateGroups>
-                    <VisualStateGroup x:Name="WindowWidthStates">
-                        <VisualState x:Name="WideLayout">
-                            <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="900" />
-                            </VisualState.StateTriggers>
-                        </VisualState>
-                        <VisualState x:Name="NarrowLayout">
-                            <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="0" />
-                            </VisualState.StateTriggers>
-                            <VisualState.Setters>
-                                <Setter Target="SourceColumn.Width" Value="*" />
-                                <Setter Target="OperationsColumn.Width" Value="0" />
-                                <Setter Target="SourcePanel.(Grid.Column)" Value="0" />
-                                <Setter Target="SourcePanel.(Grid.Row)" Value="0" />
-                                <Setter Target="OperationsPanel.(Grid.Column)" Value="0" />
-                                <Setter Target="OperationsPanel.(Grid.Row)" Value="1" />
-                                <Setter Target="MainLayout.ColumnSpacing" Value="0" />
-                                <Setter Target="MainLayout.Padding" Value="16,14,16,22" />
-                            </VisualState.Setters>
-                        </VisualState>
-                    </VisualStateGroup>
-                </VisualStateManager.VisualStateGroups>
 
                 <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="20" VerticalAlignment="Top" AutomationProperties.Name="Source media summary">
                     <Grid>
@@ -187,7 +163,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <InfoBar x:Name="StatusInfoBar" IsOpen="False" IsClosable="True" CornerRadius="8" AutomationProperties.LiveSetting="Assertive" />
+                    <InfoBar x:Name="StatusInfoBar" IsOpen="False" IsClosable="True" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" AutomationProperties.LiveSetting="Assertive" />
 
                     <Grid Grid.Row="1" ColumnSpacing="26">
                         <Grid.ColumnDefinitions>
@@ -200,7 +176,7 @@
                             <TextBlock x:Name="HeroSubtitleText" Text="JPEGs, RAWs, and video are sorted automatically. Every file is SHA-256 verified before erase is available." FontSize="15" LineHeight="22" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxWidth="670" HorizontalAlignment="Left" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
-                            <Button x:Name="TransferButton" Content="Scan for media" Style="{StaticResource AccentButtonStyle}" Background="{ThemeResource SpeedRedFillBrush}" BorderBrush="{ThemeResource SpeedRedFillBrush}" Foreground="White" HorizontalAlignment="Stretch" Height="48" ToolTipService.ToolTip="Copy, sort, and SHA-256 verify media" AutomationProperties.Name="Transfer and verify media" />
+                            <Button x:Name="TransferButton" Content="Scan for media" Style="{StaticResource PrimaryTransferButtonStyle}" HorizontalAlignment="Stretch" Height="48" ToolTipService.ToolTip="Copy, sort, and SHA-256 verify media" AutomationProperties.Name="Transfer and verify media" />
                             <Button x:Name="CancelButton" Content="Cancel transfer" HorizontalAlignment="Stretch" Height="44" Visibility="Collapsed" AutomationProperties.Name="Cancel transfer" />
                         </StackPanel>
                     </Grid>

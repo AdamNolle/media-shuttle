@@ -90,7 +90,7 @@ public sealed record WipeResult(int DeletedFiles, IReadOnlyList<string> Protecte
 
 public sealed class AppSettings
 {
-    public bool AutoTransfer { get; set; } = true;
+    public bool AutoTransfer { get; set; }
     public bool GroupByDate { get; set; }
     public bool ShowNotifications { get; set; } = true;
     public string DestinationRoot { get; set; } = string.Empty;
