@@ -45,9 +45,12 @@ public sealed class StateStore
     public Task SaveSettingsAsync(AppSettings settings, CancellationToken cancellationToken = default) =>
         SaveJsonAtomicAsync(SettingsPath, settings, cancellationToken);
 
+    public string SessionFilePath(TransferSession session) =>
+        Path.Combine(SessionsPath, $"{session.StartedUtc:yyyyMMdd-HHmmss}-{session.SessionId[..6]}.json");
+
     public async Task<string> SaveSessionAsync(TransferSession session, CancellationToken cancellationToken = default)
     {
-        string path = Path.Combine(SessionsPath, $"{session.StartedUtc:yyyyMMdd-HHmmss}-{session.SessionId[..6]}.json");
+        string path = SessionFilePath(session);
         await SaveJsonAtomicAsync(path, session, cancellationToken).ConfigureAwait(false);
         return path;
     }

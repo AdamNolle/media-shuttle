@@ -8,15 +8,21 @@ public static class CardDetector
     public static IReadOnlyList<CardInfo> GetCandidates(string destinationRoot)
     {
         string destinationDrive = Path.GetPathRoot(Path.GetFullPath(destinationRoot)) ?? string.Empty;
+        string systemDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? string.Empty;
         var candidates = new List<CardInfo>();
 
         foreach (DriveInfo drive in DriveInfo.GetDrives())
         {
             try
             {
+                // Many USB card readers — including this app's own reference hardware — report
+                // DriveType.Fixed rather than Removable, so both are treated as candidates. The
+                // DCIM/M4ROOT/PRIVATE-at-root check below is what actually gates candidacy; it
+                // keeps ordinary fixed drives (including the system drive, excluded outright) out.
                 if (!drive.IsReady ||
-                    drive.DriveType != DriveType.Removable ||
-                    drive.RootDirectory.FullName.Equals(destinationDrive, StringComparison.OrdinalIgnoreCase))
+                    drive.DriveType is not (DriveType.Removable or DriveType.Fixed) ||
+                    drive.RootDirectory.FullName.Equals(destinationDrive, StringComparison.OrdinalIgnoreCase) ||
+                    drive.RootDirectory.FullName.Equals(systemDrive, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

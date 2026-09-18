@@ -68,6 +68,7 @@ internal static class Program
 
         AppSettings newInstallSettings = await stateStore.LoadSettingsAsync();
         Assert(!newInstallSettings.AutoTransfer, "New installations leave automatic transfer off");
+        Assert(newInstallSettings.ShowActivityLog, "New installations show the activity log by default");
 
         var mountedAtStartup = new CardPresenceTracker();
         Assert(
@@ -100,15 +101,21 @@ internal static class Program
         {
             DestinationRoot = destinationRoot,
             AutoTransfer = true,
-            Theme = "Dark"
+            Theme = "Dark",
+            ShowActivityLog = false
         });
         AppSettings roundTripSettings = await stateStore.LoadSettingsAsync();
         Assert(roundTripSettings.DestinationRoot == destinationRoot, "Destination setting round trip");
         Assert(roundTripSettings.Theme == "Dark", "Theme setting round trip");
         Assert(roundTripSettings.AutoTransfer, "Automatic transfer opt-in round trip");
+        Assert(!roundTripSettings.ShowActivityLog, "Activity log opt-out round trip");
 
         TransferResult first = await transfer.TransferAsync(card, destinationRoot, false, null, CancellationToken.None);
         Assert(first.Session.Status == "Verified", "Transfer reaches verified state");
+        Assert(
+            first.SessionFilePath == stateStore.SessionFilePath(first.Session),
+            "Saved session path matches the deterministic report path");
+        Assert(File.Exists(first.SessionFilePath), "Session report file exists after a verified transfer");
         Assert(first.Session.CopiedCount == 3, "Three genuine media files copied");
         Assert(first.Session.SkippedCount == 0, "No first-run duplicates");
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "JPEGs", "DSC00001.JPG")), "JPEG destination");

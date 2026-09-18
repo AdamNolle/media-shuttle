@@ -76,7 +76,9 @@ public sealed class TransferService
                     processedBytes,
                     totalBytes,
                     session.CopiedCount,
-                    session.SkippedCount));
+                    session.SkippedCount,
+                    item.SourcePath,
+                    MediaClassifier.DestinationFolder(item.Kind)));
                 string sourceHash = await FileHasher.Sha256Async(item.SourcePath, cancellationToken).ConfigureAwait(false);
                 string destinationHash = await FileHasher.Sha256Async(destinationPath, cancellationToken).ConfigureAwait(false);
                 if (sourceHash.Equals(destinationHash, StringComparison.OrdinalIgnoreCase))
@@ -135,7 +137,9 @@ public sealed class TransferService
                 processedBytes,
                 totalBytes,
                 session.CopiedCount,
-                session.SkippedCount));
+                session.SkippedCount,
+                item.SourcePath,
+                MediaClassifier.DestinationFolder(item.Kind)));
             session.Files.Add(new TransferRecord
             {
                 SourcePath = item.SourcePath,
@@ -148,7 +152,7 @@ public sealed class TransferService
 
         session.Status = "Verified";
         session.CompletedUtc = DateTimeOffset.UtcNow;
-        await _stateStore.SaveSessionAsync(session, cancellationToken).ConfigureAwait(false);
+        string sessionFilePath = await _stateStore.SaveSessionAsync(session, cancellationToken).ConfigureAwait(false);
         await _logger.WriteAsync(
             $"Transfer verified: {session.CopiedCount} copied, {session.SkippedCount} already safe",
             cancellationToken).ConfigureAwait(false);
@@ -161,7 +165,7 @@ public sealed class TransferService
             totalBytes,
             session.CopiedCount,
             session.SkippedCount));
-        return new TransferResult(session);
+        return new TransferResult(session, sessionFilePath);
     }
 
     private async Task<string> CopyAndVerifyAsync(
@@ -212,7 +216,9 @@ public sealed class TransferService
                         next,
                         totalBytes,
                         session.CopiedCount,
-                        session.SkippedCount));
+                        session.SkippedCount,
+                        item.SourcePath,
+                        MediaClassifier.DestinationFolder(item.Kind)));
                 }
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -227,7 +233,9 @@ public sealed class TransferService
                 getProcessedBytes(),
                 totalBytes,
                 session.CopiedCount,
-                session.SkippedCount));
+                session.SkippedCount,
+                item.SourcePath,
+                MediaClassifier.DestinationFolder(item.Kind)));
             string destinationHash = await FileHasher.Sha256Async(temporaryPath, cancellationToken).ConfigureAwait(false);
             if (!sourceHash.Equals(destinationHash, StringComparison.OrdinalIgnoreCase))
             {

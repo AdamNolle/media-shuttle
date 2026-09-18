@@ -54,13 +54,16 @@ public sealed class WipeService
                 throw new IOException($"Erase blocked: the destination copy of {item.FileName} changed size.");
             }
 
+            string destinationFolder = PathUtilities.RelativeDestinationFolder(session.DestinationRoot, record.DestinationPath);
             progress?.Report(new OperationProgress(
                 OperationPhase.ReVerifying,
                 item.FileName,
                 verifiedFiles,
                 currentMedia.Count,
                 processedBytes,
-                totalBytes));
+                totalBytes,
+                CurrentSourcePath: item.SourcePath,
+                CurrentDestinationFolder: destinationFolder));
             string sourceHash = await FileHasher.Sha256Async(item.SourcePath, cancellationToken).ConfigureAwait(false);
             string destinationHash = await FileHasher.Sha256Async(record.DestinationPath, cancellationToken).ConfigureAwait(false);
             if (!sourceHash.Equals(record.Sha256, StringComparison.OrdinalIgnoreCase) ||

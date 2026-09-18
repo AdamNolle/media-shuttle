@@ -77,14 +77,16 @@ public sealed record OperationProgress(
     long ProcessedBytes,
     long TotalBytes,
     int CopiedFiles = 0,
-    int SkippedFiles = 0)
+    int SkippedFiles = 0,
+    string CurrentSourcePath = "",
+    string CurrentDestinationFolder = "")
 {
     public double Percent => TotalBytes <= 0
         ? (TotalFiles <= 0 ? 0 : Math.Clamp((double)CompletedFiles / TotalFiles * 100, 0, 100))
         : Math.Clamp((double)ProcessedBytes / TotalBytes * 100, 0, 100);
 }
 
-public sealed record TransferResult(TransferSession Session);
+public sealed record TransferResult(TransferSession Session, string SessionFilePath);
 
 public sealed record WipeResult(int DeletedFiles, IReadOnlyList<string> ProtectedSystemEntries);
 
@@ -93,6 +95,7 @@ public sealed class AppSettings
     public bool AutoTransfer { get; set; }
     public bool GroupByDate { get; set; }
     public bool ShowNotifications { get; set; } = true;
+    public bool ShowActivityLog { get; set; } = true;
     public string DestinationRoot { get; set; } = string.Empty;
     public string Theme { get; set; } = "System";
 }

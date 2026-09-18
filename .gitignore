@@ -6,3 +6,5 @@ artifacts/
 *.suo
 *.pdb
 *.partial-*
+.claude/
+.serena/

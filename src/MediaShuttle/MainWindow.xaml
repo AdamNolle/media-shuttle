@@ -5,11 +5,11 @@
 
     <Grid x:Name="Root" Background="Transparent">
         <Grid.RowDefinitions>
-            <RowDefinition Height="56" />
+            <RowDefinition Height="36" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Margin="18,0,160,0" Background="Transparent">
+        <Grid x:Name="AppTitleBar" Margin="14,0,160,0" Background="Transparent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Viewbox x:Name="AppLogo" Width="42" Height="30" VerticalAlignment="Center" AutomationProperties.Name="Fast media card logo">
+            <Viewbox x:Name="AppLogo" Width="28" Height="19" VerticalAlignment="Center" AutomationProperties.Name="Fast media card logo">
                 <Canvas Width="76" Height="48">
                     <Line X1="2" Y1="13" X2="25" Y2="13" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                     <Line X1="7" Y1="24" X2="25" Y2="24" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
@@ -31,16 +31,16 @@
                 </Canvas>
             </Viewbox>
 
-            <TextBlock x:Name="AppNameText" Grid.Column="1" Text="Media Shuttle" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <TextBlock x:Name="AppNameText" Grid.Column="1" Text="MEDIA SHUTTLE" FontFamily="Consolas" FontSize="12" FontWeight="SemiBold" CharacterSpacing="60" VerticalAlignment="Center" Margin="9,0,0,0" />
 
-            <Border x:Name="StatusPill" Grid.Column="2" Background="{ThemeResource ControlFillColorDefaultBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="15" Padding="11,5" Margin="20,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Media status" AutomationProperties.LiveSetting="Polite">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock x:Name="TopStatusText" Text="Waiting for media" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" />
+            <Border x:Name="StatusPill" Grid.Column="2" Style="{StaticResource BadgeBorderStyle}" Background="{ThemeResource ControlFillColorDefaultBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" CornerRadius="10" Padding="8,3" Margin="14,0,0,0" AutomationProperties.Name="Media status" AutomationProperties.LiveSetting="Polite">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Ellipse x:Name="StatusDot" Width="6" Height="6" Fill="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="TopStatusText" Text="WAITING FOR MEDIA" Style="{StaticResource BadgeTextStyle}" VerticalAlignment="Center" />
                 </StackPanel>
             </Border>
 
-            <Button x:Name="SettingsButton" Grid.Column="4" Width="44" Height="44" Padding="0" Margin="10,0,0,0" VerticalAlignment="Center" ToolTipService.ToolTip="Settings" AutomationProperties.Name="Open settings">
+            <Button x:Name="SettingsButton" Grid.Column="4" Width="28" Height="28" Padding="0" Margin="10,0,10,0" VerticalAlignment="Center" ToolTipService.ToolTip="Settings" AutomationProperties.Name="Open settings">
                 <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedRight">
                         <StackPanel Width="310" Spacing="16" Padding="4,5,4,4">
@@ -60,18 +60,19 @@
                             <ToggleSwitch x:Name="AutoTransferToggle" Header="Automatic transfer" OffContent="Off" OnContent="On" />
                             <ToggleSwitch x:Name="GroupByDateToggle" Header="Date folders" OffContent="Flat folders" OnContent="YYYY-MM-DD" />
                             <ToggleSwitch x:Name="NotificationsToggle" Header="Completion notifications" OffContent="Off" OnContent="On" />
+                            <ToggleSwitch x:Name="ActivityToggle" Header="Activity log" OffContent="Hidden" OnContent="Shown" />
                             <ToggleSwitch x:Name="StartupToggle" Header="Start with Windows" OffContent="Off" OnContent="On" />
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>
-                <FontIcon Glyph="&#xE713;" FontSize="16" />
+                <FontIcon Glyph="&#xE713;" FontSize="12" />
             </Button>
         </Grid>
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid x:Name="MainLayout" MaxWidth="1220" Padding="24,22,24,26" ColumnSpacing="22" RowSpacing="18" HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="SourceColumn" Width="286" />
+                    <ColumnDefinition x:Name="SourceColumn" Width="240" />
                     <ColumnDefinition x:Name="OperationsColumn" Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -79,55 +80,101 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="20" VerticalAlignment="Top" AutomationProperties.Name="Source media summary">
-                    <Grid>
+                <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="18" AutomationProperties.Name="Source media summary">
+                    <Grid RowSpacing="0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="18" />
+                            <RowDefinition Height="*" MinHeight="26" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" MinHeight="26" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="SOURCE MEDIA" Style="{StaticResource SectionLabelStyle}" />
+                        <TextBlock Text="SOURCE" Style="{StaticResource SectionLabelStyle}" />
 
-                        <StackPanel Grid.Row="1" Spacing="9" Margin="0,24,0,0">
-                            <Grid Width="184" Height="132" HorizontalAlignment="Left" AutomationProperties.Name="Camera media card illustration">
-                                <Path Data="M18,8 L126,8 L162,44 L162,124 L18,124 Z" Fill="{ThemeResource ControlFillColorDefaultBrush}" Stroke="{ThemeResource ControlStrokeColorDefaultBrush}" StrokeThickness="1" />
-                                <Path Data="M126,8 L126,44 L162,44" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1" />
-                                <Line X1="31" Y1="31" X2="31" Y2="92" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                <TextBlock Text="MEDIA" FontSize="25" FontWeight="Bold" CharacterSpacing="40" Margin="45,30,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <TextBlock Text="CAMERA STORAGE" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="46,68,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <StackPanel Orientation="Horizontal" Spacing="5" Margin="46,96,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <Rectangle Width="7" Height="12" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,13,0,0" VerticalAlignment="Top">
+                            <Grid Width="34" Height="44" AutomationProperties.Name="Camera media card icon">
+                                <Path Data="M4,2 L27,2 L34,9 L34,42 L4,42 Z" Fill="{ThemeResource ControlFillColorDefaultBrush}" Stroke="{ThemeResource ControlStrokeColorDefaultBrush}" StrokeThickness="1" />
+                                <Path Data="M27,2 L27,9 L34,9" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1" />
+                                <Line X1="8" Y1="9" X2="8" Y2="30" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                <StackPanel Orientation="Horizontal" Spacing="1" Margin="14,0,0,7" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                                    <Rectangle Width="2" Height="6" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <Rectangle Width="2" Height="6" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <Rectangle Width="2" Height="6" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <Rectangle Width="2" Height="6" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                             </Grid>
-
-                            <TextBlock x:Name="CardLabelText" Text="No card connected" FontSize="20" FontWeight="SemiBold" Margin="0,8,0,0" />
-                            <TextBlock x:Name="CardDetailText" Text="Insert a camera card or connect camera storage to begin." Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-
-                            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,17,0,13" />
-                            <Grid ColumnSpacing="20">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="ASSETS" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="AssetCountText" Text="—" Style="{StaticResource MetricValueStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock Text="MEDIA SIZE" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="MediaSizeText" Text="—" Style="{StaticResource MetricValueStyle}" />
-                                </StackPanel>
-                            </Grid>
+                            <StackPanel Spacing="3" VerticalAlignment="Center" MinWidth="0">
+                                <TextBlock x:Name="CardLabelText" Text="No card connected" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="CardDetailText" Text="Insert a camera card or connect camera storage to begin." FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                                <TextBlock x:Name="CardStatsText" Text="—" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="3" Spacing="9" Margin="0,26,0,0">
+                        <Rectangle Grid.Row="2" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+
+                        <StackPanel Grid.Row="3" Spacing="8">
+                            <TextBlock Text="CARD CONTENTS" Style="{StaticResource SectionLabelStyle}" />
+                            <Grid x:Name="CardContentsBar" Height="6" ColumnSpacing="1" Background="{ThemeResource ControlFillColorDefaultBrush}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="JpegSegmentColumn" Width="1*" />
+                                    <ColumnDefinition x:Name="RawSegmentColumn" Width="1*" />
+                                    <ColumnDefinition x:Name="OtherSegmentColumn" Width="1*" />
+                                    <ColumnDefinition x:Name="VideoSegmentColumn" Width="1*" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle Grid.Column="0" Fill="{ThemeResource MediaKindJpegBrush}" />
+                                <Rectangle Grid.Column="1" Fill="{ThemeResource MediaKindRawBrush}" />
+                                <Rectangle Grid.Column="2" Fill="{ThemeResource MediaKindOtherBrush}" />
+                                <Rectangle Grid.Column="3" Fill="{ThemeResource MediaKindVideoBrush}" />
+                            </Grid>
+                            <StackPanel>
+                                <Grid ColumnSpacing="6" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindJpegBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="JPEG" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="6,0,0,0" />
+                                    <TextBlock x:Name="JpegCountText" Grid.Column="2" Text="0" FontFamily="Consolas" FontSize="10.5" />
+                                </Grid>
+                                <Grid ColumnSpacing="6" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindRawBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="RAW" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="6,0,0,0" />
+                                    <TextBlock x:Name="RawCountText" Grid.Column="2" Text="0" FontFamily="Consolas" FontSize="10.5" />
+                                </Grid>
+                                <Grid ColumnSpacing="6" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindOtherBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="OTHER" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="6,0,0,0" />
+                                    <TextBlock x:Name="OtherCountText" Grid.Column="2" Text="0" FontFamily="Consolas" FontSize="10.5" />
+                                </Grid>
+                                <Grid ColumnSpacing="6" Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindVideoBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="VIDEO" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="6,0,0,0" />
+                                    <TextBlock x:Name="VideoCountText" Grid.Column="2" Text="0" FontFamily="Consolas" FontSize="10.5" />
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+
+                        <StackPanel Grid.Row="5" Spacing="9">
                             <TextBlock Text="DESTINATION" Style="{StaticResource SectionLabelStyle}" />
                             <Border Background="{ThemeResource ControlFillColorDefaultBrush}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
                                 <TextBlock x:Name="DestinationText" Text="Desktop\Camera" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Destination folder path" />
@@ -150,6 +197,7 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
+                            <TextBlock FontFamily="Consolas" FontSize="10" LineHeight="16" Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="Photos\JPEGs&#10;Photos\RAWs&#10;Photos\Other&#10;Videos" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -182,8 +230,9 @@
                     </Grid>
 
                     <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}" Padding="21">
-                        <Grid RowSpacing="15">
+                        <Grid RowSpacing="13">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -194,13 +243,24 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="PhaseText" Text="STANDBY" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" AutomationProperties.LiveSetting="Polite" />
-                                <TextBlock x:Name="CurrentFileText" Grid.Column="1" Text="Waiting for camera media" Margin="16,0,0,0" FontFamily="Consolas" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock x:Name="PercentText" Grid.Column="2" Text="0%" FontFamily="Consolas" FontSize="12" />
+                                <TextBlock Text="THIS SESSION" Style="{StaticResource SectionLabelStyle}" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                                    <TextBlock x:Name="PhaseText" Text="STANDBY" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" AutomationProperties.LiveSetting="Polite" />
+                                    <TextBlock x:Name="PercentText" Text="0%" FontFamily="Consolas" FontSize="12" />
+                                </StackPanel>
                             </Grid>
-                            <ProgressBar x:Name="TransferProgress" Grid.Row="1" Minimum="0" Maximum="100" Value="0" Height="7" Foreground="{ThemeResource SpeedRedBrush}" AutomationProperties.Name="Transfer progress" />
-                            <Grid Grid.Row="2" ColumnSpacing="22">
+                            <Grid Grid.Row="1" Height="4" Background="{ThemeResource ControlFillColorDefaultBrush}" AutomationProperties.Name="Transfer progress">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="ProgressBeforeColumn" Width="0*" />
+                                    <ColumnDefinition x:Name="ProgressFillColumn" Width="0*" />
+                                    <ColumnDefinition x:Name="ProgressAfterColumn" Width="100*" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle x:Name="ProgressFillRectangle" Grid.Column="1" />
+                            </Grid>
+                            <Grid Grid.Row="2" ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
@@ -217,11 +277,30 @@
                                     <TextBlock Text="PROCESSED" Style="{StaticResource SectionLabelStyle}" />
                                     <TextBlock x:Name="ProcessedText" Text="0 B" FontFamily="Consolas" />
                                 </StackPanel>
+                                <StackPanel Grid.Column="3" Spacing="4">
+                                    <TextBlock Text="THROUGHPUT" Style="{StaticResource SectionLabelStyle}" />
+                                    <TextBlock x:Name="ThroughputText" Text="—" FontFamily="Consolas" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Spacing="4">
+                                    <TextBlock Text="ELAPSED" Style="{StaticResource SectionLabelStyle}" />
+                                    <TextBlock x:Name="ElapsedText" Text="0:00" FontFamily="Consolas" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Row="3" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="CurrentFileText" Text="Waiting for camera media" FontFamily="Consolas" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                    <Button x:Name="ReportButton" Content="Report" Height="30" IsEnabled="False" ToolTipService.ToolTip="Reveal the verified transfer report" AutomationProperties.Name="Open transfer report" />
+                                    <Button x:Name="SessionTransferAgainButton" Content="Transfer again" Height="30" IsEnabled="False" AutomationProperties.Name="Transfer again" />
+                                </StackPanel>
                             </Grid>
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="3" Spacing="9">
+                    <StackPanel x:Name="ActivitySection" Grid.Row="3" Spacing="9">
                         <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
                         <ListView x:Name="ActivityList" Height="88" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
                             <ListView.ItemTemplate>
@@ -239,7 +318,15 @@
                                 <ColumnDefinition Width="236" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Spacing="6">
-                                <TextBlock Text="ERASE CARD CONTENTS" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="ERASE CARD CONTENTS" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" />
+                                    <Border x:Name="EraseLockedBadge" Style="{StaticResource BadgeBorderStyle}" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+                                        <TextBlock Text="LOCKED" Style="{StaticResource BadgeTextStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </Border>
+                                    <Border x:Name="EraseUnlockedBadge" Style="{StaticResource BadgeBorderStyle}" BorderBrush="{ThemeResource SpeedRedBrush}" Visibility="Collapsed">
+                                        <TextBlock Text="UNLOCKED" Style="{StaticResource BadgeTextStyle}" Foreground="{ThemeResource SpeedRedBrush}" />
+                                    </Border>
+                                </StackPanel>
                                 <TextBlock x:Name="WipeDescriptionText" Text="Locked until every remaining camera file has a verified destination copy." Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                             <Button x:Name="WipeButton" Grid.Column="1" Content="Erase everything on card" IsEnabled="False" Foreground="{ThemeResource SpeedRedBrush}" BorderBrush="{ThemeResource SpeedRedBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Center" Height="46" ToolTipService.ToolTip="Available only after every media file is verified" AutomationProperties.Name="Erase everything on card" />

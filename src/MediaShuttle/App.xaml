@@ -27,6 +27,10 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF202420" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF56B870" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FF0E1C12" />
+                    <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FFCFD3D8" />
+                    <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF8B9198" />
+                    <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF5C6167" />
+                    <SolidColorBrush x:Key="MediaKindVideoBrush" Color="#FF3F434A" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFD33B34" />
@@ -47,6 +51,10 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFF2F5F2" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF287A40" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FF3F434A" />
+                    <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF6B7178" />
+                    <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF9AA0A6" />
+                    <SolidColorBrush x:Key="MediaKindVideoBrush" Color="#FFC7CCD1" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FFD33B34" />
@@ -131,6 +139,18 @@
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="10" />
+            </Style>
+            <Style x:Key="BadgeBorderStyle" TargetType="Border">
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="5,2" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="BadgeTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Consolas" />
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="70" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

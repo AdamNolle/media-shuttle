@@ -17,6 +17,13 @@ namespace MediaShuttle;
 
 public sealed partial class MainWindow : Window
 {
+    private const double ScanPulseWidthPercent = 16;
+    private static readonly Color NeutralStatusColor = Color.FromArgb(255, 124, 124, 124);
+    private static readonly Color ActiveStatusColor = Color.FromArgb(255, 255, 77, 68);
+    private static readonly Color VerifiedStatusColor = Color.FromArgb(255, 56, 166, 92);
+    private static readonly Color WarningStatusColor = Color.FromArgb(255, 202, 139, 39);
+    private static readonly Color ErrorStatusColor = Color.FromArgb(255, 196, 43, 43);
+
     private readonly bool _launchInBackground;
     private string _destinationRoot;
     private readonly StateStore _stateStore;
@@ -26,12 +33,19 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<string> _activity = [];
     private readonly CardPresenceTracker _cardPresence = new();
     private readonly DispatcherQueueTimer _scanTimer;
+    private readonly DispatcherQueueTimer _scanPulseTimer;
+    private double _scanPulsePosition;
+    private int _scanPulseDirection = 1;
     private readonly TrayIconService _trayIcon;
     private readonly AppWindow _appWindow;
+    private readonly SolidColorBrush _progressFillActiveBrush = new(ActiveStatusColor);
+    private readonly SolidColorBrush _progressFillCompleteBrush = new(VerifiedStatusColor);
     private AppSettings _settings = new();
     private CardInfo? _currentCard;
     private TransferSession? _verifiedSession;
     private CancellationTokenSource? _operationCancellation;
+    private DateTimeOffset? _operationStartedUtc;
+    private string? _lastSessionFilePath;
     private bool _settingsReady;
     private bool _scanInProgress;
     private bool _busy;
@@ -97,15 +111,26 @@ public sealed partial class MainWindow : Window
             AddActivity("Cancellation requested. The current block will finish safely.");
         };
         WipeButton.Click += async (_, _) => await ConfirmAndWipeAsync();
+        ReportButton.Click += (_, _) => OpenSessionReport();
+        SessionTransferAgainButton.Click += async (_, _) => await StartTransferAsync();
         AutoTransferToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
         GroupByDateToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
         NotificationsToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
+        ActivityToggle.Toggled += async (_, _) =>
+        {
+            ActivitySection.Visibility = ActivityToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+            await SaveSettingsFromControlsAsync();
+        };
         StartupToggle.Toggled += async (_, _) => await UpdateStartupAsync();
         ThemeComboBox.SelectionChanged += async (_, _) => await UpdateThemeAsync();
 
         _scanTimer = DispatcherQueue.CreateTimer();
         _scanTimer.Interval = TimeSpan.FromSeconds(2);
         _scanTimer.Tick += async (_, _) => await ScanCardsAsync();
+
+        _scanPulseTimer = DispatcherQueue.CreateTimer();
+        _scanPulseTimer.Interval = TimeSpan.FromMilliseconds(80);
+        _scanPulseTimer.Tick += (_, _) => AdvanceScanPulse();
 
         _trayIcon = new TrayIconService(
             windowHandle,
@@ -140,7 +165,7 @@ public sealed partial class MainWindow : Window
         double width = _appWindow.Size.Width / scale;
         bool narrow = width < 900;
 
-        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(286);
+        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(240);
         OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         Grid.SetColumn(SourcePanel, 0);
         Grid.SetRow(SourcePanel, 0);
@@ -153,12 +178,57 @@ public sealed partial class MainWindow : Window
         bool iconOnlyTitleBar = width < 520;
         StatusPill.Visibility = compactTitleBar ? Visibility.Collapsed : Visibility.Visible;
         AppNameText.Visibility = iconOnlyTitleBar ? Visibility.Collapsed : Visibility.Visible;
-        AppLogo.Width = compactTitleBar ? 36 : 42;
-        AppNameText.FontSize = compactTitleBar ? 16 : 18;
-        SettingsButton.Width = compactTitleBar ? 40 : 44;
-        SettingsButton.Height = compactTitleBar ? 40 : 44;
-        SettingsButton.Margin = compactTitleBar ? new Thickness(4, 0, 0, 0) : new Thickness(10, 0, 0, 0);
-        AppTitleBar.Margin = new Thickness(iconOnlyTitleBar ? 12 : 18, 0, 160, 0);
+        AppLogo.Width = compactTitleBar ? 22 : 28;
+        AppLogo.Height = compactTitleBar ? 15 : 19;
+        AppNameText.FontSize = compactTitleBar ? 11 : 12;
+        SettingsButton.Width = compactTitleBar ? 24 : 28;
+        SettingsButton.Height = compactTitleBar ? 24 : 28;
+        SettingsButton.Margin = compactTitleBar ? new Thickness(6, 0, 6, 0) : new Thickness(10, 0, 10, 0);
+        AppTitleBar.Margin = new Thickness(iconOnlyTitleBar ? 10 : 14, 0, 160, 0);
+    }
+
+    private void SetProgressFill(double startPercent, double widthPercent, bool complete)
+    {
+        startPercent = Math.Clamp(startPercent, 0, 100);
+        widthPercent = Math.Clamp(widthPercent, 0, 100 - startPercent);
+        ProgressFillRectangle.Fill = complete ? _progressFillCompleteBrush : _progressFillActiveBrush;
+        ProgressBeforeColumn.Width = new GridLength(startPercent, GridUnitType.Star);
+        ProgressFillColumn.Width = new GridLength(widthPercent, GridUnitType.Star);
+        ProgressAfterColumn.Width = new GridLength(100 - startPercent - widthPercent, GridUnitType.Star);
+    }
+
+    private void UpdateSegmentedProgress(double percent, bool complete)
+    {
+        _scanPulseTimer.Stop();
+        SetProgressFill(0, percent, complete);
+    }
+
+    private void StartScanPulse()
+    {
+        if (_scanPulseTimer.IsRunning)
+        {
+            return;
+        }
+        _scanPulsePosition = 0;
+        _scanPulseDirection = 1;
+        _scanPulseTimer.Start();
+    }
+
+    private void AdvanceScanPulse()
+    {
+        double travel = 100 - ScanPulseWidthPercent;
+        _scanPulsePosition += _scanPulseDirection * 2.5;
+        if (_scanPulsePosition >= travel)
+        {
+            _scanPulsePosition = travel;
+            _scanPulseDirection = -1;
+        }
+        else if (_scanPulsePosition <= 0)
+        {
+            _scanPulsePosition = 0;
+            _scanPulseDirection = 1;
+        }
+        SetProgressFill(_scanPulsePosition, ScanPulseWidthPercent, complete: false);
     }
 
     private async Task InitializeAsync()
@@ -192,6 +262,8 @@ public sealed partial class MainWindow : Window
         AutoTransferToggle.IsOn = _settings.AutoTransfer;
         GroupByDateToggle.IsOn = _settings.GroupByDate;
         NotificationsToggle.IsOn = _settings.ShowNotifications;
+        ActivityToggle.IsOn = _settings.ShowActivityLog;
+        ActivitySection.Visibility = _settings.ShowActivityLog ? Visibility.Visible : Visibility.Collapsed;
         StartupToggle.IsOn = StartupService.IsEnabled;
         ThemeComboBox.SelectedIndex = _settings.Theme switch
         {
@@ -216,7 +288,7 @@ public sealed partial class MainWindow : Window
                 "Destination unavailable",
                 "The saved destination could not be opened. Choose an available folder before transferring.");
             AddActivity("Saved destination unavailable: " + destinationError.Message);
-            SetTopStatus("Choose a destination", Color.FromArgb(255, 196, 43, 43));
+            SetTopStatus("Choose a destination", ErrorStatusColor);
         }
 
         if (_launchInBackground && _destinationAvailable)
@@ -257,8 +329,8 @@ public sealed partial class MainWindow : Window
             _currentCard = card;
             IReadOnlyList<MediaItem> media = await Task.Run(() => MediaClassifier.Scan(card.RootPath));
             _lastScannedMediaCount = media.Count;
-            AssetCountText.Text = media.Count.ToString("N0");
-            MediaSizeText.Text = FormatBytes(media.Sum(item => item.Size));
+            CardStatsText.Text = $"{media.Count:N0} assets · {FormatBytes(media.Sum(item => item.Size))}";
+            UpdateCardContents(media);
             _verifiedSession = await _stateStore.LoadLatestVerifiedForCardAsync(card);
 
             bool canWipe = _verifiedSession is { Files.Count: > 0 };
@@ -337,13 +409,14 @@ public sealed partial class MainWindow : Window
         }
 
         _busy = true;
+        _operationStartedUtc = DateTimeOffset.UtcNow;
         _operationCancellation = new CancellationTokenSource();
         StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: true);
         TransferButton.Content = "Scanning media…";
         HeroTitleText.Text = "Copying and verifying your media.";
         HeroSubtitleText.Text = "Each file is written safely, checked with SHA-256, then made visible at the destination.";
-        SetTopStatus("Transfer active", Color.FromArgb(255, 255, 77, 68));
+        SetTopStatus("Transfer active", ActiveStatusColor);
         AddActivity($"Transfer started from {_currentCard.RootPath}");
 
         try
@@ -360,6 +433,11 @@ public sealed partial class MainWindow : Window
             AddActivity(
                 $"Verified {result.Session.TotalFiles:N0} files — " +
                 $"{result.Session.CopiedCount:N0} copied, {result.Session.SkippedCount:N0} already safe.");
+            ShowMessage(
+                "Transfer verified",
+                $"{result.Session.TotalFiles:N0} files safe in the destination — " +
+                $"SHA-256 matched on every remaining camera file · finished {DateTime.Now:HH:mm:ss}",
+                InfoBarSeverity.Success);
             ShowNotification(
                 "Transfer verified",
                 $"{result.Session.TotalFiles:N0} files match their destination copies.");
@@ -368,7 +446,7 @@ public sealed partial class MainWindow : Window
         {
             PhaseText.Text = "CANCELLED";
             AddActivity("Transfer cancelled. Completed files remain safe; temporary files were removed.");
-            SetTopStatus("Transfer cancelled", Color.FromArgb(255, 202, 139, 39));
+            SetTopStatus("Transfer cancelled", WarningStatusColor);
             ShowMessage(
                 "Transfer cancelled",
                 "Completed destination files were kept and temporary files were removed.",
@@ -380,11 +458,11 @@ public sealed partial class MainWindow : Window
             ShowError("Transfer failed", exception.Message);
             AddActivity("Transfer failed: " + exception.Message);
             await _logger.WriteAsync("Transfer failed: " + exception);
-            SetTopStatus("Needs attention", Color.FromArgb(255, 196, 43, 43));
+            SetTopStatus("Needs attention", ErrorStatusColor);
         }
         finally
         {
-            TransferProgress.IsIndeterminate = false;
+            _scanPulseTimer.Stop();
             if (_lastScannedMediaCount > 0)
             {
                 TransferButton.Content = _verifiedSession is null ? "Transfer + verify" : "Transfer again";
@@ -447,12 +525,13 @@ public sealed partial class MainWindow : Window
         }
 
         _busy = true;
+        _operationStartedUtc = DateTimeOffset.UtcNow;
         StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: false);
         WipeButton.IsEnabled = false;
         HeroTitleText.Text = "Re-verifying before erase.";
         HeroSubtitleText.Text = "Deletion starts only after every remaining media file matches its destination copy.";
-        SetTopStatus("Erase active", Color.FromArgb(255, 255, 77, 68));
+        SetTopStatus("Erase active", ActiveStatusColor);
         AddActivity("Erase approved. Re-verifying card media before deletion.");
 
         try
@@ -465,12 +544,16 @@ public sealed partial class MainWindow : Window
                 CancellationToken.None);
             _verifiedSession = null;
             _lastScannedMediaCount = 0;
+            _lastSessionFilePath = null;
+            ReportButton.IsEnabled = false;
+            SessionTransferAgainButton.IsEnabled = false;
+            UpdateEraseBadge(unlocked: false);
             HeroTitleText.Text = "Card contents erased.";
             HeroSubtitleText.Text =
                 "The post-erase scan found no remaining media or user content. The card is ready for the camera.";
             TransferButton.Content = "No media found";
             WipeDescriptionText.Text = "Erase complete. Connect another card or use this card in your camera.";
-            SetTopStatus("Card empty", Color.FromArgb(255, 56, 166, 92));
+            SetTopStatus("Card empty", VerifiedStatusColor);
             AddActivity($"Erase complete. {result.DeletedFiles:N0} files removed; post-erase scan empty.");
             ShowNotification("Card contents erased", $"{result.DeletedFiles:N0} files removed successfully.");
             ShowMessage(
@@ -483,7 +566,7 @@ public sealed partial class MainWindow : Window
             ShowError("Card erase did not complete", exception.Message);
             AddActivity("Erase stopped: " + exception.Message);
             await _logger.WriteAsync("Card erase failed: " + exception);
-            SetTopStatus("Erase needs attention", Color.FromArgb(255, 196, 43, 43));
+            SetTopStatus("Erase needs attention", ErrorStatusColor);
             WipeButton.IsEnabled = _verifiedSession is not null;
         }
         finally
@@ -495,7 +578,15 @@ public sealed partial class MainWindow : Window
 
     private void UpdateProgress(OperationProgress progress)
     {
-        TransferProgress.IsIndeterminate = progress.Phase == OperationPhase.Scanning;
+        bool complete = progress.Phase == OperationPhase.Complete;
+        if (progress.Phase == OperationPhase.Scanning)
+        {
+            StartScanPulse();
+        }
+        else
+        {
+            UpdateSegmentedProgress(progress.Percent, complete);
+        }
         if (progress.Phase == OperationPhase.Scanning)
         {
             TransferButton.Content = "Scanning media…";
@@ -511,12 +602,44 @@ public sealed partial class MainWindow : Window
             OperationPhase.Erasing => "ERASING CONTENTS",
             _ => progress.Phase.ToString().ToUpperInvariant()
         };
-        CurrentFileText.Text = progress.CurrentItem;
-        TransferProgress.Value = progress.Percent;
+        if (!complete)
+        {
+            CurrentFileText.Text = FormatCurrentActivity(progress);
+        }
         PercentText.Text = $"{progress.Percent:0}%";
         CopiedText.Text = $"{progress.CopiedFiles:N0} files";
         SkippedText.Text = $"{progress.SkippedFiles:N0} files";
         ProcessedText.Text = FormatBytes(progress.ProcessedBytes);
+
+        TimeSpan elapsed = _operationStartedUtc is { } startedAt ? DateTimeOffset.UtcNow - startedAt : TimeSpan.Zero;
+        ElapsedText.Text = FormatElapsed(elapsed);
+        ThroughputText.Text = elapsed.TotalSeconds >= 1
+            ? FormatThroughput(progress.ProcessedBytes, elapsed)
+            : "—";
+    }
+
+    private static string FormatCurrentActivity(OperationProgress progress)
+    {
+        const string Verb = "CURRENT";
+        if (string.IsNullOrEmpty(progress.CurrentSourcePath))
+        {
+            return $"{Verb} · {progress.CurrentItem}";
+        }
+        return string.IsNullOrEmpty(progress.CurrentDestinationFolder)
+            ? $"{Verb} · {progress.CurrentSourcePath}"
+            : $"{Verb} · {progress.CurrentSourcePath} → {progress.CurrentDestinationFolder}";
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        int totalSeconds = Math.Max(0, (int)elapsed.TotalSeconds);
+        return $"{totalSeconds / 60}:{totalSeconds % 60:00}";
+    }
+
+    private static string FormatThroughput(long processedBytes, TimeSpan elapsed)
+    {
+        double megabytesPerSecond = processedBytes / 1024.0 / 1024.0 / elapsed.TotalSeconds;
+        return $"{megabytesPerSecond:0} MB/s avg";
     }
 
     private async Task SaveSettingsFromControlsAsync()
@@ -528,6 +651,7 @@ public sealed partial class MainWindow : Window
         _settings.AutoTransfer = AutoTransferToggle.IsOn;
         _settings.GroupByDate = GroupByDateToggle.IsOn;
         _settings.ShowNotifications = NotificationsToggle.IsOn;
+        _settings.ShowActivityLog = ActivityToggle.IsOn;
         _settings.DestinationRoot = _destinationRoot;
         await _stateStore.SaveSettingsAsync(_settings);
     }
@@ -561,7 +685,9 @@ public sealed partial class MainWindow : Window
         TransferButton.Content = "Transfer + verify";
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
         WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
-        SetTopStatus("Media detected", Color.FromArgb(255, 255, 77, 68));
+        UpdateEraseBadge(unlocked: false);
+        SetTopStatus("Media detected", ActiveStatusColor);
+        ApplySessionFooter(null, "Ready to transfer and verify");
     }
 
     private void UpdateVerifiedState(CardInfo card, TransferSession session, bool justCompleted = false)
@@ -575,7 +701,9 @@ public sealed partial class MainWindow : Window
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
         WipeButton.IsEnabled = true;
         WipeDescriptionText.Text = "Unlocked — every remaining media file has a verified destination copy.";
-        SetTopStatus("Verified", Color.FromArgb(255, 56, 166, 92));
+        UpdateEraseBadge(unlocked: true);
+        SetTopStatus($"{card.VolumeLabel} CONNECTED", VerifiedStatusColor);
+        ApplySessionFooter(session);
     }
 
     private void UpdateEmptyCardState(CardInfo card, bool canWipe)
@@ -590,23 +718,25 @@ public sealed partial class MainWindow : Window
         WipeDescriptionText.Text = canWipe
             ? "Unlocked. No supported media remains to re-verify."
             : "Locked until a transfer completes and every media file is verified.";
+        UpdateEraseBadge(unlocked: canWipe);
         SetTopStatus(
-            canWipe ? "Transfer verified" : "Card empty",
-            canWipe ? Color.FromArgb(255, 56, 166, 92) : Color.FromArgb(255, 124, 124, 124));
+            canWipe ? $"{card.VolumeLabel} CONNECTED" : "Card empty",
+            canWipe ? VerifiedStatusColor : NeutralStatusColor);
+        ApplySessionFooter(canWipe ? _verifiedSession : null, "No supported media on this card");
     }
 
     private void UpdateCardSummary(CardInfo card)
     {
         CardLabelText.Text = card.VolumeLabel;
-        CardDetailText.Text = $"{card.RootPath}  •  Removable media";
+        CardDetailText.Text = $"{card.RootPath} · {card.DriveType} media";
     }
 
     private void UpdateDisconnectedState()
     {
         CardLabelText.Text = "No card connected";
         CardDetailText.Text = "Insert a removable camera card to begin.";
-        AssetCountText.Text = "—";
-        MediaSizeText.Text = "—";
+        CardStatsText.Text = "—";
+        UpdateCardContents([]);
         HeroTitleText.Text = "Ready for your next card.";
         HeroSubtitleText.Text =
             "JPEGs, RAWs, and video are sorted automatically. Every media file is SHA-256 verified before erase is available.";
@@ -614,9 +744,79 @@ public sealed partial class MainWindow : Window
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
         WipeButton.IsEnabled = false;
         WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
-        SetTopStatus("Waiting for media", Color.FromArgb(255, 124, 124, 124));
+        UpdateEraseBadge(unlocked: false);
+        SetTopStatus("Waiting for media", NeutralStatusColor);
+        ApplySessionFooter(null);
     }
 
+    private void UpdateCardContents(IReadOnlyList<MediaItem> media)
+    {
+        int jpeg = 0, raw = 0, other = 0, video = 0;
+        foreach (MediaItem item in media)
+        {
+            switch (item.Kind)
+            {
+                case MediaKind.Jpeg: jpeg++; break;
+                case MediaKind.Raw: raw++; break;
+                case MediaKind.OtherPhoto: other++; break;
+                case MediaKind.Video: video++; break;
+            }
+        }
+        int total = jpeg + raw + other + video;
+
+        JpegCountText.Text = total == 0 ? "—" : jpeg.ToString("N0");
+        RawCountText.Text = total == 0 ? "—" : raw.ToString("N0");
+        OtherCountText.Text = total == 0 ? "—" : other.ToString("N0");
+        VideoCountText.Text = total == 0 ? "—" : video.ToString("N0");
+
+        JpegSegmentColumn.Width = new GridLength(total == 0 ? 1 : jpeg, GridUnitType.Star);
+        RawSegmentColumn.Width = new GridLength(total == 0 ? 1 : raw, GridUnitType.Star);
+        OtherSegmentColumn.Width = new GridLength(total == 0 ? 1 : other, GridUnitType.Star);
+        VideoSegmentColumn.Width = new GridLength(total == 0 ? 1 : video, GridUnitType.Star);
+        CardContentsBar.Opacity = total == 0 ? 0.35 : 1.0;
+    }
+
+    private void UpdateEraseBadge(bool unlocked)
+    {
+        EraseLockedBadge.Visibility = unlocked ? Visibility.Collapsed : Visibility.Visible;
+        EraseUnlockedBadge.Visibility = unlocked ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ApplySessionFooter(TransferSession? session, string idleMessage = "Waiting for camera media")
+    {
+        bool hasSession = session is not null;
+        ReportButton.IsEnabled = !_busy && hasSession;
+        SessionTransferAgainButton.IsEnabled = !_busy && _destinationAvailable && hasSession;
+        _lastSessionFilePath = hasSession ? _stateStore.SessionFilePath(session!) : null;
+
+        TransferRecord? lastRecord = session?.Files.LastOrDefault();
+        if (session is null || lastRecord is null)
+        {
+            CurrentFileText.Text = idleMessage;
+            return;
+        }
+
+        string destinationFolder = PathUtilities.RelativeDestinationFolder(session.DestinationRoot, lastRecord.DestinationPath);
+        CurrentFileText.Text = $"LAST · {lastRecord.SourcePath} → {destinationFolder}";
+    }
+
+    private void OpenSessionReport()
+    {
+        if (_lastSessionFilePath is null || !File.Exists(_lastSessionFilePath))
+        {
+            ShowError("Report unavailable", "The saved transfer report could not be found.");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{_lastSessionFilePath}\"") { UseShellExecute = true });
+        }
+        catch (Exception exception) when (exception is Win32Exception or IOException)
+        {
+            ShowError("Report unavailable", exception.Message);
+        }
+    }
 
     private void SetOperationControls(bool active, bool allowCancel)
     {
@@ -627,11 +827,14 @@ public sealed partial class MainWindow : Window
         AutoTransferToggle.IsEnabled = !active;
         GroupByDateToggle.IsEnabled = !active;
         NotificationsToggle.IsEnabled = !active;
+        ActivityToggle.IsEnabled = !active;
         StartupToggle.IsEnabled = !active;
         ChangeDestinationButton.IsEnabled = !active;
         OpenFolderButton.IsEnabled = !active && _destinationAvailable;
         ThemeComboBox.IsEnabled = !active;
         SettingsButton.IsEnabled = !active;
+        ReportButton.IsEnabled = !active && _lastSessionFilePath is not null;
+        SessionTransferAgainButton.IsEnabled = !active && _destinationAvailable && _verifiedSession is not null;
     }
 
     private void SetTopStatus(string text, Color color)
@@ -825,7 +1028,7 @@ public sealed partial class MainWindow : Window
             SetOperationControls(false, allowCancel: false);
             ShowError("Destination unavailable", exception.Message);
             AddActivity("Destination unavailable: " + exception.Message);
-            SetTopStatus("Choose a destination", Color.FromArgb(255, 196, 43, 43));
+            SetTopStatus("Choose a destination", ErrorStatusColor);
         }
     }
 
