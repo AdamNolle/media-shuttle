@@ -37,7 +37,7 @@ jobs:
         shell: pwsh
         run: .\build.ps1 -Clean
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -49,4 +49,15 @@ jobs:
             ".\artifacts\MediaShuttle-v$version-win-x64.zip",
             ".\artifacts\SHA256SUMS.txt"
           )
-          gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --clobber
+          }
+          else {
+            gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub release publishing failed with exit code $LASTEXITCODE."
+          }

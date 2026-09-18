@@ -56,9 +56,10 @@ macOS AppleDouble sidecars whose names begin with `._` are ignored during ingest
 Download `MediaShuttle-Setup-v2.0.0-win-x64.exe` from the
 [GitHub Releases page](https://github.com/AdamNolle/media-shuttle/releases).
 Run the installer to install Media Shuttle for the current Windows user. It
-adds Start Menu and optional Desktop/startup shortcuts and includes the
-self-contained Windows App SDK and .NET runtime. Administrator access and a
-separate .NET installation are not required.
+adds a Start Menu shortcut and can optionally add Desktop and sign-in startup
+shortcuts. The package includes the self-contained Windows App SDK and .NET
+runtime, so administrator access and a separate .NET installation are not
+required.
 
 The release also includes a portable ZIP and `SHA256SUMS.txt`. The ZIP must be
 extracted before running `MediaShuttle.exe`; it is not an installer.
@@ -68,7 +69,7 @@ extracted before running `MediaShuttle.exe`; it is not an installer.
 Requirements:
 
 - Windows 10 version 1809 or later, or Windows 11
-- Windows x64
+- An x64 edition of Windows
 - .NET 8 SDK or later
 - PowerShell 5.1 or later
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php)
