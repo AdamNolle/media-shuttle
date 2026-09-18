@@ -22,6 +22,9 @@ struct ContentView: View {
             }
         }
         .background(Theme.contentBackground)
+        // Draw through the hidden title bar so the wordmark sits on the same
+        // row as the traffic lights instead of in a band beneath them.
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 940, minHeight: 470)
         .sheet(isPresented: $showingEraseConfirmation) {
             EraseConfirmationView(model: model) {

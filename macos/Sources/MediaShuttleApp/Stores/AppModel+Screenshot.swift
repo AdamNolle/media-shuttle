@@ -77,8 +77,6 @@ extension AppModel {
             message: "SHA-256 matched on every remaining camera file",
             tone: .success
         )
-        heroTitle = "Every original. Safely home."
-        heroSubtitle = "457 photos and videos match their destination copies, byte for byte. This card is safe to erase."
         primaryActionTitle = "Transfer again"
         operationStartedAt = Date.now.addingTimeInterval(-122)
         activities = [

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Resources/AppIcon-1024.png" alt="Media Shuttle app icon" width="112">
+<img src="macos/Resources/AppIcon-1024.png" alt="Media Shuttle app icon" width="112">
 
 # Media Shuttle
 
@@ -47,7 +47,7 @@ same verified-ingest and safe-erase rules described below, and use the same on-d
 
 | | macOS | Windows |
 | --- | --- | --- |
-| Source | `Sources/`, `Package.swift` | `windows/` |
+| Source | `macos/` | `windows/` |
 | Built with | SwiftUI, Swift 6 | WinUI 3, .NET 8 |
 | Requires | macOS 14 Sonoma or newer | Windows 10 1809 or newer |
 | Background presence | Menu bar extra | System tray icon |
@@ -145,29 +145,29 @@ SmartScreen warning; choose **More info**, then **Run anyway**.
 Requires macOS 14 or newer and Xcode 16 or newer with Swift 6.
 
 ```bash
-swift run MediaShuttle
+swift run --package-path macos MediaShuttle
 ```
 
 Run the safety suite from a scratch directory outside cloud-synchronized folders:
 
 ```bash
-swift test --scratch-path /tmp/media-shuttle-tests
+swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
 ```
 
 Create an ad-hoc-signed universal Apple silicon and Intel disk image:
 
 ```bash
-./scripts/package-macos.sh 2.2.0
+./macos/scripts/package-macos.sh 0.0.1
 ```
 
-The app icon is authored in **Icon Composer** (`Resources/MediaShuttle.icon`). After editing it
+The app icon is authored in **Icon Composer** (`macos/Resources/MediaShuttle.icon`). After editing it
 there, regenerate the iconset and `AppIcon.icns`:
 
 ```bash
-./scripts/build-icon.sh
+./macos/scripts/build-icon.sh
 ```
 
-The disk image is written to `artifacts/` with a matching `SHA256SUMS-macos.txt`. Set
+The disk image is written to `macos/artifacts/` with a matching `SHA256SUMS-macos.txt`. Set
 `CODE_SIGN_IDENTITY` to a Developer ID Application identity for a signed distribution.
 
 ### Windows
@@ -192,7 +192,7 @@ To build and install locally in one step:
 
 ### Releases
 
-Both platforms key off the same `v*` tag. Pushing `v2.2.0` runs the macOS and Windows release
+Both platforms key off the same `v*` tag. Pushing `v0.0.1` runs the macOS and Windows release
 workflows, which each build, test, and attach their own artifacts to that GitHub Release. The
 Windows workflow additionally checks that the tag matches `<Version>` in
 `windows/src/MediaShuttle/MediaShuttle.csproj`, so bump that alongside the tag.

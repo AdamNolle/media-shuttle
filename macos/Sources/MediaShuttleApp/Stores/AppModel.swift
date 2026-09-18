@@ -57,11 +57,9 @@ final class AppModel {
     var isDestinationAvailable = true
     var topStatus = "WAITING FOR MEDIA"
     var statusTone: AppStatusTone = .neutral
-    var heroTitle = "Ready for your next card."
-    var heroSubtitle = "JPEGs, RAWs, and video are sorted automatically. " +
-        "Every file is SHA-256 verified before erase is available."
     var primaryActionTitle = "Scan for media"
     var operationStartedAt: Date?
+    var operationEndedAt: Date?
     var isStarted = false
     var startupEnabled = SMAppService.mainApp.status == .enabled
 
@@ -125,9 +123,11 @@ final class AppModel {
         media.reduce(Int64(0)) { $0 + $1.size }
     }
 
+    /// Measured to the moment the operation finished, so the elapsed time and
+    /// the throughput derived from it stop moving once a transfer is done.
     var elapsed: TimeInterval {
         guard let operationStartedAt else { return 0 }
-        return Date.now.timeIntervalSince(operationStartedAt)
+        return (operationEndedAt ?? .now).timeIntervalSince(operationStartedAt)
     }
 
     var throughputBytesPerSecond: Double? {
@@ -212,7 +212,7 @@ final class AppModel {
             reportURL = nil
         }
         if session != nil {
-            updateVerifiedState(justCompleted: false)
+            updateVerifiedState()
         } else if scanned.isEmpty {
             updateEmptyCardState()
         } else {
@@ -258,9 +258,8 @@ final class AppModel {
 
         isBusy = true
         operationStartedAt = .now
+        operationEndedAt = nil
         banner = nil
-        heroTitle = "Copying and verifying your media."
-        heroSubtitle = "Each file is written safely, checked with SHA-256, then made visible at the destination."
         topStatus = "TRANSFER ACTIVE"
         statusTone = .active
         primaryActionTitle = "Transferring…"
@@ -281,7 +280,7 @@ final class AppModel {
                 )
                 verifiedSession = result.session
                 reportURL = result.sessionFileURL
-                updateVerifiedState(justCompleted: true)
+                updateVerifiedState()
                 addActivity(
                     "Verified \(result.session.totalFiles) files — \(result.session.copiedCount) copied, " +
                     "\(result.session.skippedCount) already safe."
@@ -306,8 +305,6 @@ final class AppModel {
                 )
                 topStatus = "TRANSFER CANCELLED"
                 statusTone = .warning
-                heroTitle = "Transfer cancelled."
-                heroSubtitle = "No partial file was left behind. You can safely start again."
                 addActivity("Transfer cancelled.")
             } catch {
                 progress = OperationProgress(
@@ -321,11 +318,10 @@ final class AppModel {
                 showError("Transfer stopped", error.localizedDescription)
                 topStatus = "NEEDS ATTENTION"
                 statusTone = .error
-                heroTitle = "Transfer needs attention."
-                heroSubtitle = "The card was not erased and any incomplete copy was removed."
                 addActivity("Transfer stopped: \(error.localizedDescription)")
                 await logger.write("Transfer failed: \(error.localizedDescription)")
             }
+            operationEndedAt = .now
             isBusy = false
             operationTask = nil
             if verifiedSession == nil { primaryActionTitle = "Transfer and verify" }
@@ -340,9 +336,8 @@ final class AppModel {
         guard operationTask == nil, let card = currentCard, let session = verifiedSession else { return }
         isBusy = true
         operationStartedAt = .now
+        operationEndedAt = nil
         banner = nil
-        heroTitle = "Re-verifying before erase."
-        heroSubtitle = "Deletion starts only after every remaining media file matches its destination copy."
         topStatus = "ERASE ACTIVE"
         statusTone = .active
         addActivity("Erase approved. Re-verifying card media before deletion.")
@@ -360,9 +355,6 @@ final class AppModel {
                 verifiedSession = nil
                 reportURL = nil
                 media = []
-                heroTitle = "Card contents erased."
-                heroSubtitle = "The post-erase scan found no remaining media or user content. " +
-                    "The card is ready for your camera."
                 primaryActionTitle = "No media found"
                 topStatus = "CARD EMPTY"
                 statusTone = .verified
@@ -378,14 +370,12 @@ final class AppModel {
                 )
             } catch {
                 showError("Erase blocked", error.localizedDescription)
-                heroTitle = "Nothing was erased."
-                heroSubtitle = "The safety check stopped before completion. " +
-                    "Review the message and transfer again if needed."
                 topStatus = "ERASE BLOCKED"
                 statusTone = .error
                 addActivity("Erase blocked: \(error.localizedDescription)")
                 await logger.write("Erase blocked: \(error.localizedDescription)")
             }
+            operationEndedAt = .now
             isBusy = false
             operationTask = nil
         }
@@ -492,9 +482,6 @@ final class AppModel {
     private func updateDisconnectedState() {
         topStatus = "WAITING FOR MEDIA"
         statusTone = .neutral
-        heroTitle = "Ready for your next card."
-        heroSubtitle = "JPEGs, RAWs, and video are sorted automatically. " +
-            "Every file is SHA-256 verified before erase is available."
         primaryActionTitle = "Scan for media"
         progress = OperationProgress(
             phase: .idle,
@@ -509,21 +496,13 @@ final class AppModel {
     private func updateDetectedState() {
         topStatus = "\(currentCard?.volumeLabel.uppercased() ?? "MEDIA") CONNECTED"
         statusTone = .active
-        heroTitle = "Media ready to transfer."
-        heroSubtitle = "\(media.count) supported files will be sorted and independently verified at the destination."
         primaryActionTitle = "Transfer and verify"
     }
 
-    private func updateVerifiedState(justCompleted: Bool) {
+    private func updateVerifiedState() {
         guard let session = verifiedSession else { return }
         topStatus = "\(currentCard?.volumeLabel.uppercased() ?? "CARD") · TRANSFER VERIFIED"
         statusTone = .verified
-        heroTitle = justCompleted ? "Every original. Safely home." : "Transfer still verified."
-        heroSubtitle = justCompleted
-            ? "\(session.totalFiles) photos and videos match their destination copies, byte for byte. " +
-                "This card is safe to erase."
-            : "\(session.totalFiles) media files still match the verified inventory. " +
-                "You can transfer again or erase the card."
         primaryActionTitle = "Transfer again"
         progress = OperationProgress(
             phase: .complete,
@@ -540,8 +519,6 @@ final class AppModel {
     private func updateEmptyCardState() {
         topStatus = "CARD EMPTY"
         statusTone = .verified
-        heroTitle = "No supported media found."
-        heroSubtitle = "The connected card has no supported photos or videos."
         primaryActionTitle = "No media found"
     }
 
@@ -557,7 +534,7 @@ final class AppModel {
     }
 
     private func sendNotification(title: String, body: String) async {
-        guard settings.showNotifications else { return }
+        guard settings.showNotifications, Bundle.isPackagedApp else { return }
         let center = UNUserNotificationCenter.current()
         let allowed = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         guard allowed else { return }

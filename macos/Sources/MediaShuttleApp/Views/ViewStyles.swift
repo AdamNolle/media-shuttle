@@ -212,6 +212,16 @@ extension Theme {
     static let primaryBorderStrong = Color.primary.opacity(0.3)
 }
 
+extension Bundle {
+    /// True only when running from a real .app bundle. `swift run` produces a
+    /// bare executable, where Info.plist keys such as `CFBundleIconFile` are
+    /// inert and `UNUserNotificationCenter.current()` raises
+    /// `NSInternalInconsistencyException` rather than returning a center.
+    static var isPackagedApp: Bool {
+        main.bundleIdentifier != nil
+    }
+}
+
 extension ByteCountFormatter {
     /// Shared formatter. The default spells zero as "Zero KB", which reads as a
     /// glitch in the metric row.

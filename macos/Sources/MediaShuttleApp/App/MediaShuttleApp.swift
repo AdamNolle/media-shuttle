@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (Resources/AppIcon.icns, applied by scripts/package-macos.sh). That key is
         // inert for unbundled dev runs (`swift run`), so render the same brand mark
         // at launch to keep the Dock icon consistent while developing.
-        if Bundle.main.bundleURL.pathExtension != "app" {
+        if !Bundle.isPackagedApp {
             NSApp.applicationIconImage = AppMark.renderedDockIcon()
         }
     }
