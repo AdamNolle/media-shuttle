@@ -41,7 +41,7 @@ private struct TitleBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AppMark(diameter: 15)
+            AppMark(size: 15)
 
             Text("MEDIA SHUTTLE")
                 .font(Theme.mono(10.5, .semibold))

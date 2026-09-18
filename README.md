@@ -128,15 +128,22 @@ Run the safety suite from a scratch directory outside cloud-synchronized folders
 swift test --scratch-path /tmp/media-shuttle-tests
 ```
 
-Create an ad-hoc-signed universal Apple silicon and Intel application archive:
+Create an ad-hoc-signed universal Apple silicon and Intel disk image:
 
 ```bash
-./scripts/package-macos.sh 2.1.0
+./scripts/package-macos.sh 2.2.0
 ```
 
-The package is written to `artifacts/` with a corresponding entry in `SHA256SUMS.txt`. Set
+The app icon is authored in **Icon Composer** (`Resources/MediaShuttle.icon`). After
+editing it there, regenerate the iconset and `AppIcon.icns`:
+
+```bash
+./scripts/build-icon.sh
+```
+
+The disk image is written to `artifacts/` with a corresponding entry in `SHA256SUMS.txt`. Set
 `CODE_SIGN_IDENTITY` to a Developer ID Application identity when producing a signed distribution.
-Version tags such as `v2.1.0` run the macOS release workflow, execute the safety suite, package the
+Version tags such as `v2.2.0` run the macOS release workflow, execute the safety suite, package the
 universal app, and attach both files to the GitHub Release.
 
 ## Data and privacy

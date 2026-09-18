@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${1:-${VERSION:-2.1.0}}"
+VERSION="${1:-${VERSION:-2.2.0}}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M)}"
 BUILD_ROOT="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/media-shuttle-release"
 ARTIFACTS="$ROOT/artifacts"
