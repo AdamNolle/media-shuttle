@@ -1,4 +1,4 @@
-name: Release native macOS app
+name: Release macOS app
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ASSETS=(
             "artifacts/MediaShuttle-v$VERSION-macOS-universal.dmg"
-            "artifacts/SHA256SUMS.txt"
+            "artifacts/SHA256SUMS-macos.txt"
           )
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then

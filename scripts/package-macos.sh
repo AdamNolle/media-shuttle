@@ -38,7 +38,7 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 
 DMG="$ARTIFACTS/MediaShuttle-v$VERSION-macOS-universal.dmg"
 STAGING="$BUILD_ROOT/dmg-staging"
-rm -f "$DMG" "$ARTIFACTS/SHA256SUMS.txt"
+rm -f "$DMG" "$ARTIFACTS/SHA256SUMS-macos.txt"
 rm -rf "$STAGING"
 mkdir -p "$STAGING"
 ditto "$APP" "$STAGING/Media Shuttle.app"
@@ -57,7 +57,7 @@ codesign --verify --verbose=2 "$DMG"
 
 (
     cd "$ARTIFACTS"
-    shasum -a 256 "$(basename "$DMG")" > SHA256SUMS.txt
+    shasum -a 256 "$(basename "$DMG")" > SHA256SUMS-macos.txt
 )
 
 printf 'Created %s\n' "$DMG"

@@ -4,10 +4,12 @@
 
 # Media Shuttle
 
-**A native macOS camera-card ingest app that proves every original arrived safely.**
+**A native camera-card ingest app for macOS and Windows that proves every original arrived safely.**
 
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](#install)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](#macos)
+[![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](#windows)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](#build-from-source)
+[![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white)](#build-from-source)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/AdamNolle/media-shuttle?label=release)](https://github.com/AdamNolle/media-shuttle/releases)
 
@@ -38,16 +40,27 @@ Camera/
 The default destination is `~/Desktop/Camera`. Choose any accessible folder and Media Shuttle will
 remember it.
 
-## Native macOS experience
+## Two native apps, one behaviour
 
-- SwiftUI interface built for macOS 14 and newer, with System, Light, and Dark appearances.
+Media Shuttle ships a separate native app per platform. They share no runtime, but implement the
+same verified-ingest and safe-erase rules described below, and use the same on-disk layout.
+
+| | macOS | Windows |
+| --- | --- | --- |
+| Source | `Sources/`, `Package.swift` | `windows/` |
+| Built with | SwiftUI, Swift 6 | WinUI 3, .NET 8 |
+| Requires | macOS 14 Sonoma or newer | Windows 10 1809 or newer |
+| Background presence | Menu bar extra | System tray icon |
+| Start with the OS | Login Items (`SMAppService`) | Startup registration |
+
+Shared across both:
+
 - Automatic camera-card discovery across mounted removable and external volumes.
-- Menu bar status and controls while the main window is closed.
-- Launch at Login integration through macOS Login Items.
+- Status and controls while the main window is closed.
 - Native notifications for completed transfers and erases.
 - Optional automatic transfer when a new card is mounted.
 - Optional `YYYY-MM-DD` folders within each media category.
-- No telemetry, account, cloud service, Electron runtime, or .NET dependency.
+- No telemetry, account, cloud service, or Electron runtime.
 
 ## Verified ingest
 
@@ -98,10 +111,15 @@ followed while scanning or erasing a card.
 
 ## Install
 
-Media Shuttle requires macOS 14 Sonoma or newer.
+Both platforms are published on the same tag in
+[GitHub Releases](https://github.com/AdamNolle/media-shuttle/releases). Verify a download against
+the matching `SHA256SUMS-macos.txt` or `SHA256SUMS-windows.txt`.
 
-1. Download `MediaShuttle-v*-macOS-universal.dmg` from
-   [GitHub Releases](https://github.com/AdamNolle/media-shuttle/releases).
+### macOS
+
+Requires macOS 14 Sonoma or newer.
+
+1. Download `MediaShuttle-v*-macOS-universal.dmg`.
 2. Open the disk image and drag **Media Shuttle.app** into the **Applications** shortcut.
 3. Open Media Shuttle, choose a destination, and connect a camera card.
 
@@ -109,14 +127,22 @@ Community builds are ad-hoc signed unless a release maintainer supplies a Develo
 For an ad-hoc build, Control-click the app, choose **Open**, then confirm once in the macOS security
 prompt.
 
+### Windows
+
+Requires Windows 10 1809 or newer.
+
+1. Download `MediaShuttle-Setup-v*-win-x64.exe` and run it, or take
+   `MediaShuttle-v*-win-x64.zip` for a portable copy.
+2. Launch Media Shuttle, choose a destination, and connect a camera card.
+
+The build is self-contained, so no .NET runtime install is required. Unsigned builds raise a
+SmartScreen warning; choose **More info**, then **Run anyway**.
+
 ## Build from source
 
-Requirements:
+### macOS
 
-- macOS 14 or newer
-- Xcode 16 or newer with Swift 6
-
-Run the app directly:
+Requires macOS 14 or newer and Xcode 16 or newer with Swift 6.
 
 ```bash
 swift run MediaShuttle
@@ -134,24 +160,50 @@ Create an ad-hoc-signed universal Apple silicon and Intel disk image:
 ./scripts/package-macos.sh 2.2.0
 ```
 
-The app icon is authored in **Icon Composer** (`Resources/MediaShuttle.icon`). After
-editing it there, regenerate the iconset and `AppIcon.icns`:
+The app icon is authored in **Icon Composer** (`Resources/MediaShuttle.icon`). After editing it
+there, regenerate the iconset and `AppIcon.icns`:
 
 ```bash
 ./scripts/build-icon.sh
 ```
 
-The disk image is written to `artifacts/` with a corresponding entry in `SHA256SUMS.txt`. Set
-`CODE_SIGN_IDENTITY` to a Developer ID Application identity when producing a signed distribution.
-Version tags such as `v2.2.0` run the macOS release workflow, execute the safety suite, package the
-universal app, and attach both files to the GitHub Release.
+The disk image is written to `artifacts/` with a matching `SHA256SUMS-macos.txt`. Set
+`CODE_SIGN_IDENTITY` to a Developer ID Application identity for a signed distribution.
+
+### Windows
+
+Requires the .NET 8 SDK, the Windows App SDK workload, and — for the installer — Inno Setup 6
+(`winget install JRSoftware.InnoSetup`). Run from the repository root:
+
+```powershell
+.\windows\build.ps1 -Clean
+```
+
+`build.ps1` runs the core test suite, publishes a self-contained `win-x64` build, packages a
+portable zip and an Inno Setup installer into `windows/artifacts/`, and writes
+`SHA256SUMS-windows.txt`. Use `-SkipInstaller` for a portable-only build, or `-SkipTests` to skip
+the suite.
+
+To build and install locally in one step:
+
+```powershell
+.\windows\install.ps1
+```
+
+### Releases
+
+Both platforms key off the same `v*` tag. Pushing `v2.2.0` runs the macOS and Windows release
+workflows, which each build, test, and attach their own artifacts to that GitHub Release. The
+Windows workflow additionally checks that the tag matches `<Version>` in
+`windows/src/MediaShuttle/MediaShuttle.csproj`, so bump that alongside the tag.
 
 ## Data and privacy
 
 Settings, verified transfer records, and the activity log are stored locally in:
 
 ```text
-~/Library/Application Support/Media Shuttle/
+macOS:    ~/Library/Application Support/Media Shuttle/
+Windows:  %LOCALAPPDATA%\Media Shuttle\
 ```
 
 Media Shuttle makes no network requests and collects no analytics.
