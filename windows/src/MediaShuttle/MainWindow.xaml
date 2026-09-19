@@ -70,7 +70,10 @@
         </Grid>
 
         <ScrollViewer x:Name="RootScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid x:Name="MainLayout" MaxWidth="1220" Padding="24,22,24,26" ColumnSpacing="22" RowSpacing="18" HorizontalAlignment="Center">
+            <!-- MaxWidth only stops the line length becoming absurd on an ultrawide display. It used
+                 to be 1220, which a maximised window on a 4K screen at 200% scaling passes easily, so
+                 the layout stopped growing and sat in a narrow centred column. -->
+            <Grid x:Name="MainLayout" MaxWidth="1760" Padding="24,22,24,26" ColumnSpacing="22" RowSpacing="18" HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="SourceColumn" Width="240" />
                     <ColumnDefinition x:Name="OperationsColumn" Width="*" />
@@ -82,19 +85,30 @@
 
                 <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="18" AutomationProperties.Name="Source media summary">
                     <Grid RowSpacing="0">
+                        <!-- The divider bands used to be star-sized. Now that the panel stretches to
+                             the full height of a tall window, that spread the three sections apart
+                             across the whole sidebar; the trailing star row takes the slack instead. -->
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" MinHeight="26" />
+                            <RowDefinition Height="26" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" MinHeight="26" />
+                            <RowDefinition Height="26" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Text="SOURCE" Style="{StaticResource SectionLabelStyle}" />
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,13,0,0" VerticalAlignment="Top">
-                            <Grid Width="34" Height="44" AutomationProperties.Name="Camera media card icon">
+                        <!-- A horizontal StackPanel measures its children with unbounded width, so the
+                             wrapping card detail below would never wrap and would be clipped by this
+                             panel instead. A Grid gives the text column a real width to wrap into. -->
+                        <Grid Grid.Row="1" ColumnSpacing="10" Margin="0,13,0,0" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid Width="34" Height="44" VerticalAlignment="Top" AutomationProperties.Name="Camera media card icon">
                                 <Path Data="M4,2 L27,2 L34,9 L34,42 L4,42 Z" Fill="{ThemeResource ControlFillColorDefaultBrush}" Stroke="{ThemeResource ControlStrokeColorDefaultBrush}" StrokeThickness="1" />
                                 <Path Data="M27,2 L27,9 L34,9" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1" />
                                 <Line X1="8" Y1="9" X2="8" Y2="30" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
@@ -105,12 +119,12 @@
                                     <Rectangle Width="2" Height="6" Fill="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                             </Grid>
-                            <StackPanel Spacing="3" VerticalAlignment="Center" MinWidth="0">
+                            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                                 <TextBlock x:Name="CardLabelText" Text="No card connected" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="CardDetailText" Text="Insert a camera card or connect camera storage to begin." FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-                                <TextBlock x:Name="CardStatsText" Text="—" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock x:Name="CardStatsText" Text="—" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                             </StackPanel>
-                        </StackPanel>
+                        </Grid>
 
                         <Rectangle Grid.Row="2" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
 
@@ -257,7 +271,9 @@
                                 </Grid.ColumnDefinitions>
                                 <Rectangle x:Name="ProgressFillRectangle" Grid.Column="1" />
                             </Grid>
-                            <Grid Grid.Row="2" ColumnSpacing="16">
+                            <!-- Column count is set in code: five of these across a narrow window
+                                 squeezes each one below the width of its own label. -->
+                            <Grid x:Name="SessionStatsGrid" Grid.Row="2" ColumnSpacing="16">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
@@ -265,25 +281,25 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="4">
+                                <StackPanel x:Name="CopiedStat" Spacing="4">
                                     <TextBlock Text="COPIED" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="CopiedText" Text="0 files" FontFamily="Consolas" />
+                                    <TextBlock x:Name="CopiedText" Text="0 files" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="4">
+                                <StackPanel x:Name="SkippedStat" Grid.Column="1" Spacing="4">
                                     <TextBlock Text="ALREADY SAFE" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="SkippedText" Text="0 files" FontFamily="Consolas" />
+                                    <TextBlock x:Name="SkippedText" Text="0 files" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
+                                <StackPanel x:Name="ProcessedStat" Grid.Column="2" Spacing="4">
                                     <TextBlock Text="PROCESSED" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="ProcessedText" Text="0 B" FontFamily="Consolas" />
+                                    <TextBlock x:Name="ProcessedText" Text="0 B" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="3" Spacing="4">
+                                <StackPanel x:Name="ThroughputStat" Grid.Column="3" Spacing="4">
                                     <TextBlock Text="THROUGHPUT" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="ThroughputText" Text="—" FontFamily="Consolas" />
+                                    <TextBlock x:Name="ThroughputText" Text="—" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="4" Spacing="4">
+                                <StackPanel x:Name="ElapsedStat" Grid.Column="4" Spacing="4">
                                     <TextBlock Text="ELAPSED" Style="{StaticResource SectionLabelStyle}" />
-                                    <TextBlock x:Name="ElapsedText" Text="0:00" FontFamily="Consolas" />
+                                    <TextBlock x:Name="ElapsedText" Text="0:00" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Grid>
                             <Grid Grid.Row="3" ColumnSpacing="12">
@@ -302,7 +318,7 @@
 
                     <StackPanel x:Name="ActivitySection" Grid.Row="3" Spacing="9">
                         <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
-                        <ListView x:Name="ActivityList" Height="88" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
+                        <ListView x:Name="ActivityList" Height="88" MinHeight="88" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" LineHeight="18" TextWrapping="Wrap" Margin="0,3" />

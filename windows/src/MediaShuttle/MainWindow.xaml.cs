@@ -18,6 +18,8 @@ namespace MediaShuttle;
 public sealed partial class MainWindow : Window
 {
     private const double ScanPulseWidthPercent = 16;
+    private const double MinimumActivityHeight = 88;
+    private const double MaximumActivityHeight = 460;
     private static readonly Color NeutralStatusColor = Color.FromArgb(255, 124, 124, 124);
     private static readonly Color ActiveStatusColor = Color.FromArgb(255, 255, 77, 68);
     private static readonly Color VerifiedStatusColor = Color.FromArgb(255, 56, 166, 92);
@@ -104,6 +106,11 @@ public sealed partial class MainWindow : Window
             }
         };
         UpdateResponsiveLayout(windowHandle);
+
+        // AppWindow.Changed announces a resize before the content is laid out again, so the viewport
+        // is still the old one there. This fires once the ScrollViewer has actually been given its
+        // new size, and hands that size over directly.
+        RootScrollViewer.SizeChanged += (_, args) => ApplyActivityListHeight(args.NewSize.Height);
         Root.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
         UpdateTitleBarColors();
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "MediaShuttle.ico");
@@ -157,6 +164,7 @@ public sealed partial class MainWindow : Window
         ActivityToggle.Toggled += async (_, _) =>
         {
             ActivitySection.Visibility = ActivityToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+            ScheduleActivityListHeightUpdate();
             await SaveSettingsFromControlsAsync();
         };
         StartupToggle.Toggled += async (_, _) => await UpdateStartupAsync();
@@ -186,6 +194,14 @@ public sealed partial class MainWindow : Window
         DisplayArea displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
         RectInt32 workArea = displayArea.WorkArea;
 
+        // Windows otherwise lets the window be dragged down to a few dozen pixels, which no layout
+        // survives. This is the narrowest the single-column arrangement still renders cleanly.
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.PreferredMinimumWidth = (int)Math.Round(420 * scale);
+            presenter.PreferredMinimumHeight = (int)Math.Round(420 * scale);
+        }
+
         int edgeMargin = (int)Math.Round(24 * scale);
         int maximumWidth = Math.Max(720, workArea.Width - edgeMargin * 2);
         int maximumHeight = Math.Max(560, workArea.Height - edgeMargin * 2);
@@ -200,6 +216,10 @@ public sealed partial class MainWindow : Window
     private void UpdateResponsiveLayout(IntPtr windowHandle)
     {
         double scale = Math.Max(1.0, NativeMethods.GetDpiForWindow(windowHandle) / 96.0);
+
+        // This runs from AppWindow.Changed, which fires before the content is laid out again, so
+        // the ScrollViewer's viewport still describes the previous size. The window is the only
+        // measurement that is current here.
         double width = _appWindow.Size.Width / scale;
         bool narrow = width < 900;
 
@@ -229,6 +249,90 @@ public sealed partial class MainWindow : Window
         SettingsButton.Height = compactTitleBar ? 24 : 28;
         SettingsButton.Margin = compactTitleBar ? new Thickness(6, 0, 6, 0) : new Thickness(10, 0, 10, 0);
         AppTitleBar.Margin = new Thickness(iconOnlyTitleBar ? 10 : 14, 0, 160, 0);
+
+        // Width the session statistics actually get: the whole window when stacked, minus the
+        // sidebar and the gap between the columns when they sit side by side.
+        double statsWidth = narrow ? width : width - 240 - 22;
+        SetSessionStatsColumns(statsWidth switch
+        {
+            < 380 => 2,
+            < 620 => 3,
+            _ => 5
+        });
+
+        ScheduleActivityListHeightUpdate();
+    }
+
+    /// <summary>
+    /// Reflows the five session statistics across the given number of columns. Five across a narrow
+    /// window leaves each one narrower than its own label, which clips rather than wraps.
+    /// </summary>
+    private void SetSessionStatsColumns(int columns)
+    {
+        StackPanel[] stats = [CopiedStat, SkippedStat, ProcessedStat, ThroughputStat, ElapsedStat];
+        if (SessionStatsGrid.ColumnDefinitions.Count == columns)
+        {
+            return;
+        }
+
+        int rows = (int)Math.Ceiling((double)stats.Length / columns);
+        SessionStatsGrid.ColumnDefinitions.Clear();
+        for (int column = 0; column < columns; column++)
+        {
+            SessionStatsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+
+        SessionStatsGrid.RowDefinitions.Clear();
+        for (int row = 0; row < rows; row++)
+        {
+            SessionStatsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        for (int index = 0; index < stats.Length; index++)
+        {
+            Grid.SetColumn(stats[index], index % columns);
+            Grid.SetRow(stats[index], index / columns);
+        }
+
+        SessionStatsGrid.RowSpacing = rows > 1 ? 13 : 0;
+    }
+
+    /// <summary>
+    /// The sizing below measures a laid-out window, so it has to run after the layout pass a resize
+    /// triggers rather than inside the event that announces the resize.
+    /// </summary>
+    private void ScheduleActivityListHeightUpdate() =>
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, UpdateActivityListHeight);
+
+    /// <summary>
+    /// Every row of the layout is Auto-sized inside a ScrollViewer, so a window taller than the
+    /// content leaves dead space below the erase panel. The activity list is the one element that
+    /// can usefully absorb it. Measuring the rest of the layout, rather than hard-coding its
+    /// height, keeps this correct as the panels above it grow and shrink.
+    /// </summary>
+    private void UpdateActivityListHeight() => ApplyActivityListHeight(RootScrollViewer.ViewportHeight);
+
+    private void ApplyActivityListHeight(double viewportHeight)
+    {
+        if (ActivitySection.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        // DesiredSize, not ActualHeight: a ScrollViewer stretches content shorter than its viewport,
+        // so ActualHeight reports the viewport back and the arithmetic below cancels out. DesiredSize
+        // is what the content asked for. Subtracting the list leaves a figure that does not move when
+        // the list is resized, so this converges in one pass rather than oscillating.
+        double everythingElse = MainLayout.DesiredSize.Height - ActivityList.ActualHeight;
+        if (viewportHeight <= 0 || everythingElse <= 0)
+        {
+            return;
+        }
+
+        ActivityList.Height = Math.Clamp(
+            viewportHeight - everythingElse,
+            MinimumActivityHeight,
+            MaximumActivityHeight);
     }
 
     private void SetProgressFill(double startPercent, double widthPercent, bool complete)
@@ -308,6 +412,7 @@ public sealed partial class MainWindow : Window
         NotificationsToggle.IsOn = _settings.ShowNotifications;
         ActivityToggle.IsOn = _settings.ShowActivityLog;
         ActivitySection.Visibility = _settings.ShowActivityLog ? Visibility.Visible : Visibility.Collapsed;
+        ScheduleActivityListHeightUpdate();
         StartupToggle.IsOn = StartupService.IsEnabled;
         ThemeComboBox.SelectedIndex = _settings.Theme switch
         {
