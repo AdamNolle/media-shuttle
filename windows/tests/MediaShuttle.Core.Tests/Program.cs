@@ -59,6 +59,18 @@ internal static class Program
         Assert(MediaClassifier.TryClassify(raw, out MediaKind rawKind) && rawKind == MediaKind.Raw, "RAW classification");
         Assert(MediaClassifier.TryClassify(video, out MediaKind videoKind) && videoKind == MediaKind.Video, "Video classification");
         Assert(!MediaClassifier.TryClassify(appleDouble, out _), "AppleDouble exclusion");
+        foreach (string rawName in new[] { "IMG.CR3", "IMG.CR2", "DSC.NEF", "DSCF.RAF", "P.ORF", "P.RW2", "X.PEF", "X.X3F" })
+        {
+            Assert(
+                MediaClassifier.TryClassify(rawName, out MediaKind kind) && kind == MediaKind.Raw,
+                $"{Path.GetExtension(rawName)} is recognised as RAW");
+        }
+        Assert(
+            MediaClassifier.TryClassify("A001.BRAW", out MediaKind brawKind) && brawKind == MediaKind.Video,
+            ".braw is recognised as video");
+        Assert(MediaClassifier.IsDisposableCameraArtifact("INDEX.XML"), "Camera metadata is disposable");
+        Assert(MediaClassifier.IsDisposableCameraArtifact("GOPR0001.THM"), "Camera thumbnails are disposable");
+        Assert(!MediaClassifier.IsDisposableCameraArtifact("NOTES.PDF"), "Unknown user content is not disposable");
 
         var stateStore = new StateStore(stateRoot);
         var logger = new AppLogger(stateRoot);
@@ -147,6 +159,29 @@ internal static class Program
         }
         Assert(blocked, "Erase blocks unverified media");
         File.Delete(unverified);
+
+        // A format the classifier does not know is never copied, so erase has nothing to verify it
+        // against and must refuse the whole card rather than delete it.
+        string unknownFormat = Path.Combine(cardRoot, "DCIM", "100MSDCF", "CLIP0001.XYZ");
+        await File.WriteAllTextAsync(unknownFormat, "an unrecognised camera format");
+        Assert(
+            MediaClassifier.FindUnverifiableFiles(cardRoot).Count == 1,
+            "Unrecognised user content is reported as unverifiable");
+        bool blockedUnknown = false;
+        try
+        {
+            await wipe.WipeEverythingAsync(card, collision.Session, null, CancellationToken.None);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("not recognised camera media"))
+        {
+            blockedUnknown = true;
+        }
+        Assert(blockedUnknown, "Erase blocks files it could never have copied");
+        Assert(File.Exists(unknownFormat), "A blocked erase leaves unrecognised content untouched");
+        File.Delete(unknownFormat);
+        Assert(
+            MediaClassifier.FindUnverifiableFiles(cardRoot).Count == 0,
+            "Camera housekeeping alone does not block erase");
 
         File.SetAttributes(jpeg, File.GetAttributes(jpeg) | FileAttributes.ReadOnly);
         string readOnlyUnknown = Path.Combine(cardRoot, "CAMERA.DAT");

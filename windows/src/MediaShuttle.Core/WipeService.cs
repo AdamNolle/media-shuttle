@@ -24,9 +24,21 @@ public sealed class WipeService
             throw new DirectoryNotFoundException("The verified card is no longer connected.");
         }
 
-        IReadOnlyList<MediaItem> currentMedia = await Task.Run(
-            () => MediaClassifier.Scan(root),
-            cancellationToken).ConfigureAwait(false);
+        // A transfer only copies files the classifier recognises as camera media, so any other user
+        // content on the card has no destination copy to verify against. Deleting it anyway would
+        // lose it permanently, so fail closed: the card must hold nothing but recognised media and
+        // camera/OS housekeeping before erase will touch it.
+        CardScan scan = await Task.Run(() => MediaClassifier.ScanCard(root), cancellationToken).ConfigureAwait(false);
+        if (scan.UnverifiableFiles.Count > 0)
+        {
+            string names = string.Join(", ", scan.UnverifiableFiles.Select(Path.GetFileName).Take(5));
+            throw new InvalidOperationException(
+                $"Erase blocked: {scan.UnverifiableFiles.Count:N0} file(s) on this card are not recognised camera media, " +
+                $"so no verified copy exists for them: {names}. " +
+                "Copy them off the card yourself before erasing.");
+        }
+
+        IReadOnlyList<MediaItem> currentMedia = scan.Media;
         var records = session.Files.ToDictionary(
             record => Path.GetFullPath(record.SourcePath),
             StringComparer.OrdinalIgnoreCase);

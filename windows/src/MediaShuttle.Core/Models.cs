@@ -30,6 +30,10 @@ public sealed record MediaItem(
     DateTime LastWriteTimeUtc,
     MediaKind Kind);
 
+public sealed record CardScan(
+    IReadOnlyList<MediaItem> Media,
+    IReadOnlyList<string> UnverifiableFiles);
+
 public sealed record CardInfo(
     string RootPath,
     string VolumeLabel,

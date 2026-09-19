@@ -43,7 +43,8 @@ remember it.
 ## Two native apps, one behaviour
 
 Media Shuttle ships a separate native app per platform. They share no runtime, but implement the
-same verified-ingest and safe-erase rules described below, and use the same on-disk layout.
+same verified-ingest and safe-erase rules described below, and use the same on-disk layout. One
+difference matters today: see the platform note under [Supported media](#supported-media).
 
 | | macOS | Windows |
 | --- | --- | --- |
@@ -84,15 +85,24 @@ Erase remains locked until a completed session matches the connected volume, its
 inventory, and every recorded destination file. Immediately before deletion, Media Shuttle again:
 
 1. confirms the card root and stable volume identity;
-2. rescans the complete media inventory;
-3. rejects added, missing, resized, or unrecorded media;
-4. recalculates SHA-256 for every source and destination copy;
-5. starts deletion only after every digest matches the verified session.
+2. refuses any card holding a file it does not recognize;
+3. rescans the complete media inventory;
+4. rejects added, missing, resized, or unrecorded media;
+5. recalculates SHA-256 for every source and destination copy;
+6. starts deletion only after every digest matches the verified session.
+
+Step 2 fails closed. A transfer only copies files Media Shuttle classifies as camera media, so
+anything else on the card has no destination copy to verify against — and deleting it would lose it
+for good. Erase therefore refuses the whole card unless every file on it is either recognized media
+or camera and operating-system housekeeping such as `THM` thumbnails, `XML` clip metadata, `AVCHD`
+index files, and `.DS_Store`. When something unrecognized is present, the app names it and leaves
+erase locked; copy those files off the card yourself, then erase.
 
 Confirmation requires both an acknowledgment checkbox and the exact phrase `ERASE EVERYTHING`.
 Media Shuttle then removes all user content, including camera databases and sidecar folders, and
-performs a final scan. macOS-managed volume folders such as `.Spotlight-V100`, `.Trashes`, and
-`.fseventsd` may remain or be recreated by the system.
+performs a final scan. System-managed volume folders such as `.Spotlight-V100`, `.Trashes`,
+`.fseventsd`, `$RECYCLE.BIN`, and `System Volume Information` may remain or be recreated by the
+operating system.
 
 This is a file-level erase, not a filesystem format. Use the camera’s own **Format** command when a
 freshly initialized camera filesystem is required.
@@ -101,13 +111,19 @@ freshly initialized camera filesystem is required.
 
 | Category | Extensions |
 | --- | --- |
-| JPEG | `JPG`, `JPEG` |
-| RAW | `ARW`, `DNG` |
-| Other photos | `HEIF`, `HEIC`, `HIF`, `TIF`, `TIFF`, `PNG` |
-| Video | `MP4`, `MOV`, `MXF`, `MTS`, `M2TS`, `AVI` |
+| JPEG | `JPG`, `JPEG`, `JPE` |
+| RAW | `ARW`, `SR2`, `SRF`, `DNG`, `RAW`, `CR2`, `CR3`, `CRW`, `NEF`, `NRW`, `RAF`, `ORF`, `RW2`, `RWL`, `PEF`, `PTX`, `SRW`, `X3F`, `3FR`, `FFF`, `IIQ`, `CAP`, `EIP`, `MEF`, `MOS`, `MRW`, `ERF`, `DCR`, `KDC`, `K25`, `GPR`, `ARI` |
+| Other photos | `HEIF`, `HEIC`, `HIF`, `AVIF`, `JXL`, `TIF`, `TIFF`, `PNG`, `BMP`, `GIF`, `WEBP`, `JP2`, `J2K`, `PSD` |
+| Video | `MP4`, `M4V`, `MOV`, `MXF`, `BRAW`, `R3D`, `MTS`, `M2TS`, `M2T`, `TS`, `MOD`, `TOD`, `AVI`, `MKV`, `WEBM`, `WMV`, `ASF`, `MPG`, `MPEG`, `M2V`, `VOB`, `3GP`, `3G2`, `INSV`, `LRV`, `DV` |
 
 AppleDouble sidecars whose names begin with `._` are ignored during ingest. Symbolic links are never
 followed while scanning or erasing a card.
+
+> **Platform note.** The table above describes the Windows app as of 0.1.0. The macOS app currently
+> recognizes only `ARW` and `DNG` as RAW, along with the shorter JPEG, other-photo, and video lists
+> from earlier releases, and it does not yet apply the unrecognized-content rule described under
+> [Safe card erase](#safe-card-erase). Until that is ported, do not rely on the macOS app's erase
+> with a card holding formats it does not recognize.
 
 ## Install
 
@@ -157,7 +173,7 @@ swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
 Create an ad-hoc-signed universal Apple silicon and Intel disk image:
 
 ```bash
-./macos/scripts/package-macos.sh 0.0.1
+./macos/scripts/package-macos.sh 0.1.0
 ```
 
 The app icon is authored in **Icon Composer** (`macos/Resources/MediaShuttle.icon`). After editing it
@@ -192,7 +208,7 @@ To build and install locally in one step:
 
 ### Releases
 
-Both platforms key off the same `v*` tag. Pushing `v0.0.1` runs the macOS and Windows release
+Both platforms key off the same `v*` tag. Pushing `v0.1.0` runs the macOS and Windows release
 workflows, which each build, test, and attach their own artifacts to that GitHub Release. The
 Windows workflow additionally checks that the tag matches `<Version>` in
 `windows/src/MediaShuttle/MediaShuttle.csproj`, so bump that alongside the tag.

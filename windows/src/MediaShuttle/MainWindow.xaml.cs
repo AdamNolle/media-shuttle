@@ -51,7 +51,12 @@ public sealed partial class MainWindow : Window
     private bool _busy;
     private bool _destinationAvailable = true;
     private int _lastScannedMediaCount = -1;
+    private int _unverifiableFileCount;
+    private string? _lastScanSignature;
     private bool _allowClose;
+    private bool _initialActivationHandled;
+    private bool _placementPending;
+    private readonly IntPtr _windowHandle;
 
     public MainWindow(bool launchInBackground)
     {
@@ -77,9 +82,20 @@ public sealed partial class MainWindow : Window
         }
 
         IntPtr windowHandle = WindowNative.GetWindowHandle(this);
+        _windowHandle = windowHandle;
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
         _appWindow.Title = "Media Shuttle";
         SizeAndCenterWindow(windowHandle);
+        if (_launchInBackground)
+        {
+            // Activate() below shows the window, and the earliest we can hide it again is the
+            // Activated handler one message-pump turn later — long enough for Windows to paint a
+            // centred window and animate it in. Park it off the virtual screen until something
+            // actually asks for it, so a boot launch shows nothing at all. ShowWindow() centres it
+            // before the first real reveal.
+            _placementPending = true;
+            _appWindow.Move(new PointInt32(-30000, -30000));
+        }
         _appWindow.Changed += (_, args) =>
         {
             if (args.DidSizeChange)
@@ -97,6 +113,28 @@ public sealed partial class MainWindow : Window
         }
 
         _appWindow.Closing += OnAppWindowClosing;
+
+        // A background launch (the Windows startup shortcut passes --background) still needs
+        // Activate() called once — without it the root element never loads, so InitializeAsync
+        // never runs and the app never scans for cards. Hiding only after InitializeAsync
+        // finishes its awaits (settings load, destination checks, the first card scan) let the
+        // window sit on screen for that whole stretch on every automatic boot launch. Hide it on
+        // the very first Activated instead, which together with the off-screen parking above means
+        // a background launch never puts anything on screen. Later activations (the user reopening
+        // from the tray icon) are intentionally left alone.
+        Activated += (_, _) =>
+        {
+            if (_initialActivationHandled)
+            {
+                return;
+            }
+            _initialActivationHandled = true;
+            if (_launchInBackground)
+            {
+                _appWindow.Hide();
+            }
+        };
+
         DestinationText.Text = _destinationRoot;
         DestinationText.SetValue(ToolTipService.ToolTipProperty, _destinationRoot);
         ActivityList.ItemsSource = _activity;
@@ -295,15 +333,18 @@ public sealed partial class MainWindow : Window
                 "The saved destination could not be opened. Choose an available folder before transferring.");
             AddActivity("Saved destination unavailable: " + destinationError.Message);
             SetTopStatus("Choose a destination", ErrorStatusColor);
-        }
 
-        if (_launchInBackground && _destinationAvailable)
-        {
-            _appWindow.Hide();
+            // The window was already hidden immediately on launch (see the Activated handler
+            // above) so a bad saved destination isn't silently invisible in the tray — surface
+            // the window so the error is actually seen.
+            if (_launchInBackground)
+            {
+                ShowWindow();
+            }
         }
     }
 
-    private async Task ScanCardsAsync()
+    private async Task ScanCardsAsync(bool force = false)
     {
         if (_busy || _scanInProgress)
         {
@@ -322,6 +363,8 @@ public sealed partial class MainWindow : Window
                 _currentCard = null;
                 _verifiedSession = null;
                 _lastScannedMediaCount = -1;
+                _unverifiableFileCount = 0;
+                _lastScanSignature = null;
                 UpdateDisconnectedState();
                 return;
             }
@@ -331,18 +374,37 @@ public sealed partial class MainWindow : Window
                                !_currentCard.RootPath.Equals(card.RootPath, StringComparison.OrdinalIgnoreCase);
             TransferSession? previousSession = _verifiedSession;
             int previousMediaCount = _lastScannedMediaCount;
+            int previousUnverifiableCount = _unverifiableFileCount;
 
             _currentCard = card;
-            IReadOnlyList<MediaItem> media = await Task.Run(() => MediaClassifier.Scan(card.RootPath));
+
+            // This runs every two seconds for as long as a card stays connected. Walking the whole
+            // card and re-reading the session reports each time is minutes of pointless reader and
+            // disk traffic on a full card, so skip it while the card looks untouched. Adding or
+            // removing anything on a camera card moves the free-space figure, which is read fresh by
+            // GetCandidates above.
+            string scanSignature = $"{card.RootPath}|{card.VolumeSerial}|{card.FreeBytes}";
+            if (!force && !isNew && !cardChanged && scanSignature == _lastScanSignature)
+            {
+                return;
+            }
+            _lastScanSignature = scanSignature;
+            CardScan scan = await Task.Run(() => MediaClassifier.ScanCard(card.RootPath));
+            IReadOnlyList<MediaItem> media = scan.Media;
+            _unverifiableFileCount = scan.UnverifiableFiles.Count;
             _lastScannedMediaCount = media.Count;
             CardStatsText.Text = $"{media.Count:N0} assets · {FormatBytes(media.Sum(item => item.Size))}";
             UpdateCardContents(media);
             _verifiedSession = await _stateStore.LoadLatestVerifiedForCardAsync(card);
 
-            bool canWipe = _verifiedSession is { Files.Count: > 0 };
+            // WipeService refuses a card holding content no transfer could have copied. Reflect that
+            // here so erase reads as locked, rather than accepting the typed confirmation and only
+            // then refusing.
+            bool canWipe = _verifiedSession is { Files.Count: > 0 } && _unverifiableFileCount == 0;
             bool verificationChanged = previousSession?.SessionId != _verifiedSession?.SessionId;
             WipeButton.IsEnabled = canWipe;
-            if (cardChanged || previousMediaCount != media.Count || verificationChanged)
+            if (cardChanged || previousMediaCount != media.Count || verificationChanged ||
+                previousUnverifiableCount != _unverifiableFileCount)
             {
                 if (media.Count == 0)
                 {
@@ -361,7 +423,24 @@ public sealed partial class MainWindow : Window
             if (isNew)
             {
                 AddActivity($"Detected {card.VolumeLabel} at {card.RootPath}");
-                if (_launchInBackground)
+
+                // The in-app activity list holds six lines and is gone when the app restarts. This
+                // app spends most of its life in the tray, so card arrivals belong in the log too —
+                // it is the only record available when diagnosing a transfer that ran unattended.
+                await _logger.WriteAsync(
+                    $"Detected {card.VolumeLabel} at {card.RootPath}: {media.Count:N0} media file(s), " +
+                    $"{_unverifiableFileCount:N0} unverifiable");
+                if (_unverifiableFileCount > 0)
+                {
+                    AddActivity(
+                        $"{_unverifiableFileCount:N0} unrecognised file(s) on this card cannot be verified — erase stays locked.");
+                }
+
+                // A freshly inserted card is the one moment this app has something to say, so
+                // surface the window whenever it is hidden — not only when the process happened to
+                // be launched with --background. Closing the window sends it to the tray, and
+                // without this an auto-transfer would otherwise run entirely out of sight.
+                if (!_appWindow.IsVisible)
                 {
                     ShowWindow();
                 }
@@ -395,7 +474,7 @@ public sealed partial class MainWindow : Window
         }
         if (_currentCard is null)
         {
-            await ScanCardsAsync();
+            await ScanCardsAsync(force: true);
             if (_currentCard is null)
             {
                 ShowMessage(
@@ -477,6 +556,10 @@ public sealed partial class MainWindow : Window
             _operationCancellation = null;
             _busy = false;
             SetOperationControls(false, allowCancel: false);
+
+            // Reading the card does not move its free space, so let the next tick re-derive state
+            // rather than have the skip-unchanged check hold on to what was true before the transfer.
+            _lastScanSignature = null;
         }
     }
 
@@ -487,6 +570,13 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // Captured so the erase that actually runs is the card and session shown in this dialog,
+        // not whatever _currentCard/_verifiedSession happen to be once the user responds. The scan
+        // timer keeps running while this dialog awaits input, and can reassign both fields (e.g. the
+        // card is pulled, or swapped for a different already-verified card) before the user answers.
+        CardInfo targetCard = _currentCard;
+        TransferSession targetSession = _verifiedSession;
+
         var phrase = new TextBox
         {
             Header = "Type ERASE EVERYTHING to continue",
@@ -494,7 +584,7 @@ public sealed partial class MainWindow : Window
         };
         var acknowledge = new CheckBox
         {
-            Content = $"I understand this removes all files and folders from {_currentCard.RootPath}."
+            Content = $"I understand this removes all files and folders from {targetCard.RootPath}."
         };
         var content = new StackPanel { Spacing = 14 };
         content.Children.Add(new TextBlock
@@ -530,6 +620,31 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // _busy was only false when this dialog opened. The scan timer keeps ticking while it waits
+        // for input, and with auto-transfer on an inserted card starts a transfer from that tick —
+        // so an erase confirmed now would delete the very files a transfer is still reading.
+        if (_busy)
+        {
+            ShowError(
+                "Operation in progress",
+                "A transfer started while the confirmation was open. Wait for it to finish, then erase the card.");
+            AddActivity("Erase cancelled: a transfer started during confirmation.");
+            return;
+        }
+
+        bool stillMatches = _currentCard is not null &&
+            _currentCard.RootPath.Equals(targetCard.RootPath, StringComparison.OrdinalIgnoreCase) &&
+            _currentCard.VolumeSerial == targetCard.VolumeSerial &&
+            _verifiedSession?.SessionId == targetSession.SessionId;
+        if (!stillMatches)
+        {
+            ShowError(
+                "Card changed",
+                "The connected card changed while the confirmation was open. Reconnect the card and try erasing again.");
+            AddActivity("Erase cancelled: the connected card changed during confirmation.");
+            return;
+        }
+
         _busy = true;
         _operationStartedUtc = DateTimeOffset.UtcNow;
         StatusInfoBar.IsOpen = false;
@@ -544,8 +659,8 @@ public sealed partial class MainWindow : Window
         {
             var progress = new Progress<OperationProgress>(UpdateProgress);
             WipeResult result = await _wipeService.WipeEverythingAsync(
-                _currentCard,
-                _verifiedSession,
+                targetCard,
+                targetSession,
                 progress,
                 CancellationToken.None);
             _verifiedSession = null;
@@ -579,6 +694,7 @@ public sealed partial class MainWindow : Window
         {
             _busy = false;
             SetOperationControls(false, allowCancel: false);
+            _lastScanSignature = null;
         }
     }
 
@@ -690,7 +806,7 @@ public sealed partial class MainWindow : Window
         HeroSubtitleText.Text = "Ready to sort and verify the supported media at your selected destination.";
         TransferButton.Content = "Transfer + verify";
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
-        WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
+        WipeDescriptionText.Text = LockedEraseDescription();
         UpdateEraseBadge(unlocked: false);
         SetTopStatus("Media detected", ActiveStatusColor);
         ApplySessionFooter(null, "Ready to transfer and verify");
@@ -723,13 +839,22 @@ public sealed partial class MainWindow : Window
         TransferButton.IsEnabled = false;
         WipeDescriptionText.Text = canWipe
             ? "Unlocked. No supported media remains to re-verify."
-            : "Locked until a transfer completes and every media file is verified.";
+            : _unverifiableFileCount > 0
+                ? LockedEraseDescription()
+                : "Locked until a transfer completes and every media file is verified.";
         UpdateEraseBadge(unlocked: canWipe);
         SetTopStatus(
             canWipe ? $"{card.VolumeLabel} CONNECTED" : "Card empty",
             canWipe ? VerifiedStatusColor : NeutralStatusColor);
         ApplySessionFooter(canWipe ? _verifiedSession : null, "No supported media on this card");
     }
+
+    private string LockedEraseDescription() => _unverifiableFileCount switch
+    {
+        0 => "Locked until every remaining media file has a verified destination copy.",
+        1 => "Locked — one file on this card is not recognised camera media, so no transfer can verify it. Copy it off the card yourself.",
+        _ => $"Locked — {_unverifiableFileCount:N0} files on this card are not recognised camera media, so no transfer can verify them. Copy them off the card yourself."
+    };
 
     private void UpdateCardSummary(CardInfo card)
     {
@@ -929,7 +1054,7 @@ public sealed partial class MainWindow : Window
                 "Destination updated",
                 "New transfers will use the selected folder.",
                 InfoBarSeverity.Success);
-            await ScanCardsAsync();
+            await ScanCardsAsync(force: true);
         }
         catch (Exception exception) when (IsDestinationException(exception))
         {
@@ -1040,9 +1165,14 @@ public sealed partial class MainWindow : Window
 
     private void ShowWindow()
     {
+        if (_placementPending)
+        {
+            _placementPending = false;
+            SizeAndCenterWindow(_windowHandle);
+        }
         _appWindow.Show();
         Activate();
-        NativeMethods.ActivateExistingWindow("Media Shuttle");
+        NativeMethods.ActivateWindow(_windowHandle);
     }
 
     private void ExitApplication()
@@ -1071,7 +1201,7 @@ public sealed partial class MainWindow : Window
         }
         args.Cancel = true;
         _appWindow.Hide();
-        ShowNotification("Media Shuttle is still watching", "Double-click the tray icon to reopen the app.");
+        ShowNotification("Media Shuttle is still watching", "Click the tray icon to reopen the app.");
     }
 
     private void ShowNotification(string title, string message)

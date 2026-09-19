@@ -19,6 +19,14 @@ internal sealed class TrayIconService : IDisposable
     private const int WmLButtonDoubleClick = 0x0203;
     private const int WmRButtonUp = 0x0205;
     private const int WmContextMenu = 0x007B;
+
+    // NIM_SETVERSION with version 4 (below) changes which events the shell reports: a plain click or
+    // keyboard activation arrives as NIN_SELECT/NIN_KEYSELECT rather than the WM_LBUTTON* messages a
+    // version-0 icon would send. Without these the tray icon ignores single clicks, which is the
+    // only way back to a window the user has closed into the tray.
+    private const int NinSelect = 0x0400;
+    private const int NinKeySelect = 0x0401;
+    private const uint WmNull = 0x0000;
     private const uint ImageIcon = 1;
     private const uint LrLoadFromFile = 0x0010;
     private const uint MfString = 0x0000;
@@ -91,21 +99,32 @@ internal sealed class TrayIconService : IDisposable
         if (message == CallbackMessage)
         {
             int notificationMessage = unchecked((int)(lParam.ToInt64() & 0xFFFF));
-            if (notificationMessage == WmLButtonDoubleClick)
+            if (notificationMessage is NinSelect or NinKeySelect or WmLButtonDoubleClick)
             {
                 _open();
             }
             else if (notificationMessage is WmRButtonUp or WmContextMenu)
             {
-                ShowContextMenu();
+                // Version 4 reports where the icon was invoked in wParam, which is the correct anchor
+                // for a keyboard-invoked menu — the pointer can be anywhere on screen by then.
+                ShowContextMenu(
+                    unchecked((short)(wParam.ToUInt64() & 0xFFFF)),
+                    unchecked((short)((wParam.ToUInt64() >> 16) & 0xFFFF)));
             }
             return IntPtr.Zero;
         }
         return DefSubclassProc(window, message, wParam, lParam);
     }
 
-    private void ShowContextMenu()
+    private void ShowContextMenu(int anchorX, int anchorY)
     {
+        if (anchorX == 0 && anchorY == 0)
+        {
+            GetCursorPos(out Point point);
+            anchorX = point.X;
+            anchorY = point.Y;
+        }
+
         IntPtr menu = CreatePopupMenu();
         try
         {
@@ -113,16 +132,20 @@ internal sealed class TrayIconService : IDisposable
             AppendMenu(menu, MfString, 2, "Open destination folder");
             AppendMenu(menu, MfSeparator, 0, null);
             AppendMenu(menu, MfString, 3, "Exit");
-            GetCursorPos(out Point point);
             SetForegroundWindow(_windowHandle);
             uint command = TrackPopupMenu(
                 menu,
                 TpmRightButton | TpmReturnCommand,
-                point.X,
-                point.Y,
+                anchorX,
+                anchorY,
                 0,
                 _windowHandle,
                 IntPtr.Zero);
+
+            // TrackPopupMenu leaves the owner window believing the menu is still up, so the next
+            // click outside it is swallowed instead of dismissing the menu. The documented fix is to
+            // post any message to the owner once tracking ends.
+            PostMessage(_windowHandle, WmNull, UIntPtr.Zero, IntPtr.Zero);
             switch (command)
             {
                 case 1:
@@ -254,4 +277,8 @@ internal sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam);
 }
