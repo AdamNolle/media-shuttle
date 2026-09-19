@@ -119,7 +119,7 @@ freshly initialized camera filesystem is required.
 AppleDouble sidecars whose names begin with `._` are ignored during ingest. Symbolic links are never
 followed while scanning or erasing a card.
 
-> **Platform note.** The table above describes the Windows app as of 0.1.0. The macOS app currently
+> **Platform note.** The table above describes the Windows app as of 0.0.1. The macOS app currently
 > recognizes only `ARW` and `DNG` as RAW, along with the shorter JPEG, other-photo, and video lists
 > from earlier releases, and it does not yet apply the unrecognized-content rule described under
 > [Safe card erase](#safe-card-erase). Until that is ported, do not rely on the macOS app's erase
@@ -173,7 +173,7 @@ swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
 Create an ad-hoc-signed universal Apple silicon and Intel disk image:
 
 ```bash
-./macos/scripts/package-macos.sh 0.1.0
+./macos/scripts/package-macos.sh 0.0.1
 ```
 
 The app icon is authored in **Icon Composer** (`macos/Resources/MediaShuttle.icon`). After editing it
@@ -208,7 +208,7 @@ To build and install locally in one step:
 
 ### Releases
 
-Both platforms key off the same `v*` tag. Pushing `v0.1.0` runs the macOS and Windows release
+Both platforms key off the same `v*` tag. Pushing `v0.0.1` runs the macOS and Windows release
 workflows, which each build, test, and attach their own artifacts to that GitHub Release. The
 Windows workflow additionally checks that the tag matches `<Version>` in
 `windows/src/MediaShuttle/MediaShuttle.csproj`, so bump that alongside the tag.
