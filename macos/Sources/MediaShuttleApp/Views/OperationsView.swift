@@ -14,7 +14,10 @@ struct OperationsView: View {
             SessionPanel(model: model)
 
             if model.settings.showActivityLog {
+                // Sized before the spacer below, so a tall window grows the log
+                // rather than the gap above the erase bar.
                 ActivityLog(entries: model.activities)
+                    .layoutPriority(1)
             }
 
             Spacer(minLength: 4)
@@ -299,7 +302,9 @@ private struct ActivityLog: View {
                     }
                 }
             }
-            .frame(maxHeight: 108)
+            // The upper bound stops the log swallowing a full-screen window; past
+            // that the spare height falls to the spacer above the erase bar.
+            .frame(minHeight: 108, maxHeight: 460)
         }
     }
 }
