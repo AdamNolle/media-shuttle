@@ -19,7 +19,6 @@ public sealed partial class MainWindow : Window
 {
     private const double ScanPulseWidthPercent = 16;
     private const double MinimumActivityHeight = 88;
-    private const double MaximumActivityHeight = 460;
     private static readonly Color NeutralStatusColor = Color.FromArgb(255, 124, 124, 124);
     private static readonly Color ActiveStatusColor = Color.FromArgb(255, 255, 77, 68);
     private static readonly Color VerifiedStatusColor = Color.FromArgb(255, 56, 166, 92);
@@ -329,10 +328,10 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        ActivityList.Height = Math.Clamp(
-            viewportHeight - everythingElse,
-            MinimumActivityHeight,
-            MaximumActivityHeight);
+        // No upper bound. The list is the only region with more to show given more room, and it
+        // now carries a panel border, so letting it take all of the remaining height keeps the
+        // erase bar on the bottom edge instead of stranding a gap under it on a tall window.
+        ActivityList.Height = Math.Max(viewportHeight - everythingElse, MinimumActivityHeight);
     }
 
     private void SetProgressFill(double startPercent, double widthPercent, bool complete)

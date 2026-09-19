@@ -85,17 +85,17 @@
 
                 <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="18" AutomationProperties.Name="Source media summary">
                     <Grid RowSpacing="0">
-                        <!-- The divider bands used to be star-sized. Now that the panel stretches to
-                             the full height of a tall window, that spread the three sections apart
-                             across the whole sidebar; the trailing star row takes the slack instead. -->
+                        <!-- Divider bands are fixed; the single star row sits between the card
+                             summary and the destination, so a tall window puts the destination at
+                             the foot of the panel instead of leaving the lower half of the card
+                             empty. Spreading every section apart instead just looks unmoored. -->
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="26" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="26" />
+                            <RowDefinition Height="*" MinHeight="26" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Text="SOURCE" Style="{StaticResource SectionLabelStyle}" />
@@ -186,7 +186,10 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+                        <!-- Bottom-aligned inside the star row with the same 13px gap it would have
+                             if the row were centred at its 26px minimum, so a short window looks
+                             exactly as before and a tall one grows the space above the rule. -->
+                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Bottom" Margin="0,0,0,13" />
 
                         <StackPanel Grid.Row="5" Spacing="9">
                             <TextBlock Text="DESTINATION" Style="{StaticResource SectionLabelStyle}" />
@@ -318,13 +321,18 @@
 
                     <StackPanel x:Name="ActivitySection" Grid.Row="3" Spacing="9">
                         <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
-                        <ListView x:Name="ActivityList" Height="88" MinHeight="88" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" LineHeight="18" TextWrapping="Wrap" Margin="0,3" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                        <!-- Bordered: this is the region that absorbs the spare height of a tall
+                             window, and unbordered it read as a hole in the layout rather than as
+                             a log that happens to be short. -->
+                        <Border Style="{StaticResource PanelBorderStyle}" Padding="4">
+                            <ListView x:Name="ActivityList" Height="88" MinHeight="88" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" LineHeight="18" TextWrapping="Wrap" Margin="0,3" />
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Border>
                     </StackPanel>
 
                     <Border Grid.Row="4" Background="{ThemeResource DangerSurfaceBrush}" BorderBrush="{ThemeResource SpeedRedBrush}" BorderThickness="1" CornerRadius="10" Padding="21" AutomationProperties.Name="Erase card controls">
