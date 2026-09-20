@@ -37,6 +37,13 @@ public enum OperationPhase: String, Codable, Sendable {
     case cancelled
     case error
 
+    /// Phases that report continuously within a single file, rather than once per state change.
+    /// These are the only ones worth rate-limiting on the way to the UI; every other phase arrives
+    /// a handful of times per operation and has to be shown as soon as it does.
+    public var isContinuous: Bool {
+        self == .copying || self == .reVerifying
+    }
+
     public var label: String {
         switch self {
         case .idle: "STANDBY"

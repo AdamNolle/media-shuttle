@@ -8,7 +8,7 @@ struct MenuBarView: View {
     var body: some View {
         Button("Open Media Shuttle") {
             openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
+            AppDelegate.presentMainWindow()
         }
 
         Divider()
@@ -22,7 +22,7 @@ struct MenuBarView: View {
 
         Button("Transfer and Verify") {
             openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
+            AppDelegate.presentMainWindow()
             model.startTransfer()
         }
         .disabled(!model.canTransfer)

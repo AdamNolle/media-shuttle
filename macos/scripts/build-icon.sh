@@ -33,6 +33,10 @@ render 512  "$ICONSET/icon_256x256@2x.png"
 render 512  "$ICONSET/icon_512x512.png"
 render 1024 "$ICONSET/icon_512x512@2x.png"
 
+# ictool exports 16 bits per channel, which an app icon has no use for and which costs
+# roughly three and a half times the size of the iconset and the .icns built from it.
+python3 "$ROOT/scripts/png-to-8bit.py" "$ICONSET"/*.png
+
 iconutil -c icns "$ICONSET" -o "$ROOT/Resources/AppIcon.icns"
 cp "$ICONSET/icon_512x512@2x.png" "$ROOT/Resources/AppIcon-1024.png"
 

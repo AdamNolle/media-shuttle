@@ -323,6 +323,67 @@ final class MediaShuttleCoreTests: XCTestCase {
         }
     }
 
+    /// The app sits in the menu bar for months and logs a line per file, so app.log is bounded by
+    /// a single rollover. Losing the rollover means an unbounded file in Application Support.
+    func testLogRollsOverOnceOversizedAndKeepsPreviousRun() async throws {
+        let logger = try AppLogger(stateRoot: stateRoot)
+        let manager = FileManager.default
+
+        await logger.write("first run")
+        XCTAssertTrue(manager.fileExists(atPath: logger.logURL.path))
+        XCTAssertFalse(manager.fileExists(atPath: logger.previousLogURL.path))
+
+        // Stand in for months of transfers rather than writing two megabytes a line at a time.
+        try Data(repeating: 0x41, count: 2 * 1024 * 1024).write(to: logger.logURL)
+
+        await logger.write("after rollover")
+
+        let current = try String(contentsOf: logger.logURL, encoding: .utf8)
+        XCTAssertTrue(current.contains("after rollover"))
+        XCTAssertLessThan(current.count, 1024, "the rolled-over log should start fresh")
+
+        let previous = try Data(contentsOf: logger.previousLogURL)
+        XCTAssertEqual(previous.count, 2 * 1024 * 1024, "the oversized log is kept as the previous run")
+
+        // A second rollover replaces the previous log rather than accumulating more of them.
+        try Data(repeating: 0x42, count: 2 * 1024 * 1024).write(to: logger.logURL)
+        await logger.write("second rollover")
+        XCTAssertEqual(
+            try Data(contentsOf: logger.previousLogURL).first,
+            0x42,
+            "only the most recent oversized log is retained"
+        )
+        let stateEntries = try manager.contentsOfDirectory(atPath: stateRoot.path)
+            .filter { $0.hasPrefix("app") && $0.hasSuffix(".log") }
+        XCTAssertEqual(Set(stateEntries), ["app.log", "app.previous.log"])
+    }
+
+    /// Events are handed to the logger without being awaited, so the line has to carry the time the
+    /// event happened rather than the time it reached the file.
+    func testLogLineCarriesTheEventTimeItWasGiven() async throws {
+        let logger = try AppLogger(stateRoot: stateRoot)
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+
+        await logger.write("Detected UNTITLED at /Volumes/UNTITLED", at: moment)
+
+        let contents = try String(contentsOf: logger.logURL, encoding: .utf8)
+        XCTAssertTrue(contents.contains(moment.ISO8601Format()))
+        XCTAssertTrue(contents.contains("Detected UNTITLED at /Volumes/UNTITLED"))
+    }
+
+    /// Only the phases that report continuously within one file may be rate-limited on the way to
+    /// the UI; rate-limiting any other phase would drop a state change that is reported once.
+    func testOnlyContinuousPhasesAreRateLimited() {
+        XCTAssertTrue(OperationPhase.copying.isContinuous)
+        XCTAssertTrue(OperationPhase.reVerifying.isContinuous)
+        for phase in [
+            OperationPhase.idle, .scanning, .checkingDuplicate, .verifying,
+            .erasing, .complete, .cancelled, .error
+        ] {
+            XCTAssertFalse(phase.isContinuous, "\(phase) is reported once and must not be coalesced")
+        }
+    }
+
     private func write(_ string: String, to url: URL) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(),

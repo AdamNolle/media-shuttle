@@ -72,6 +72,7 @@ final class AppModel {
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var presenceTracker = CardPresenceTracker()
     @ObservationIgnored private var lastScanSignature: String?
+    @ObservationIgnored private var lastProgressAppliedAt: Date?
 
     init() {
         let applicationSupport = (try? StateStore.defaultRootURL())
@@ -344,7 +345,6 @@ final class AppModel {
                 topStatus = "NEEDS ATTENTION"
                 statusTone = .error
                 addActivity("Transfer stopped: \(error.localizedDescription)")
-                await logger.write("Transfer failed: \(error.localizedDescription)")
             }
             operationEndedAt = .now
             isBusy = false
@@ -434,7 +434,6 @@ final class AppModel {
                 topStatus = "ERASE BLOCKED"
                 statusTone = .error
                 addActivity("Erase blocked: \(error.localizedDescription)")
-                await logger.write("Erase blocked: \(error.localizedDescription)")
             }
             operationEndedAt = .now
             isBusy = false
@@ -534,7 +533,23 @@ final class AppModel {
         }
     }
 
+    /// A copy reports every megabyte, so a fast reader produces hundreds of updates a second, each
+    /// invalidating the whole progress region and competing with the transfer itself for the main
+    /// actor. Coalesce to about fifteen redraws a second. Only mid-file progress is rate-limited:
+    /// a change of phase or of file lands at once, so nothing the reader relies on is ever late,
+    /// and a dropped update is always followed by one carrying the same totals.
+    private static let progressRedrawInterval: TimeInterval = 1.0 / 15
+
     private func apply(_ update: OperationProgress) {
+        let isContinuation = update.phase.isContinuous
+            && update.phase == progress.phase
+            && update.currentItem == progress.currentItem
+        if isContinuation,
+           let last = lastProgressAppliedAt,
+           Date.now.timeIntervalSince(last) < Self.progressRedrawInterval {
+            return
+        }
+        lastProgressAppliedAt = .now
         progress = update
     }
 
@@ -585,11 +600,16 @@ final class AppModel {
         banner = BannerMessage(title: title, message: message, tone: .error)
     }
 
+    /// Mirrored to app.log. The window can be closed for an entire unattended transfer and this list
+    /// dies with the process, so the log is the only record that a card arrived, what was done with
+    /// it, and why an erase was refused.
     private func addActivity(_ message: String) {
-        activities.insert(ActivityEntry(date: .now, message: message), at: 0)
+        let entry = ActivityEntry(date: .now, message: message)
+        activities.insert(entry, at: 0)
         if activities.count > 100 {
             activities.removeLast(activities.count - 100)
         }
+        Task { await logger.write(message, at: entry.date) }
     }
 
     private func sendNotification(title: String, body: String) async {
