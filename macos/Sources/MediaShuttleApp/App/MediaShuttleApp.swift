@@ -26,10 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
         }
 
-        // The packaged .app gets its Dock icon from Info.plist's CFBundleIconFile
-        // (Resources/AppIcon.icns, applied by scripts/package-macos.sh). That key is
-        // inert for unbundled dev runs (`swift run`), so render the same brand mark
-        // at launch to keep the Dock icon consistent while developing.
+        // The packaged .app gets its Dock icon from Info.plist's CFBundleIconName, which
+        // resolves through the Assets.car that scripts/package-macos.sh compiles from
+        // Resources/MediaShuttle.icon. That key is inert for unbundled dev runs
+        // (`swift run`), so render the same brand mark at launch to keep the Dock icon
+        // consistent while developing.
         if !Bundle.isPackagedApp {
             NSApp.applicationIconImage = AppMark.renderedDockIcon()
         }

@@ -9,7 +9,7 @@ import SwiftUI
 /// same cut — so this and the shipped icon are the same drawing at different fidelities.
 ///
 /// The shipped icon is authored in Icon Composer (`Resources/MediaShuttle.icon`) and
-/// compiled to `Resources/AppIcon.icns` by `scripts/build-icon.sh`.
+/// compiled into the bundle by `scripts/package-macos.sh`.
 struct AppMark: View {
     var size: CGFloat = 18
 
@@ -96,8 +96,8 @@ extension AppMark {
     }
 
     /// Backs `NSApp.applicationIconImage` when running unbundled (`swift run`), where
-    /// Info.plist's `CFBundleIconFile` has no effect. The packaged .app uses
-    /// `Resources/AppIcon.icns`. This is the icon tile rather than the bare mark: on
+    /// Info.plist's `CFBundleIconName` has no effect. The packaged .app draws its icon
+    /// from the compiled Icon Composer document. This is the icon tile rather than the bare mark: on
     /// its own tile the bus keeps the logo's own black card instead of borrowing the
     /// chrome's foreground colour.
     @MainActor

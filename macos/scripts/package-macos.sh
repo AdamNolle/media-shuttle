@@ -25,7 +25,31 @@ BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_PATH/MediaShuttle" "$APP/Contents/MacOS/MediaShuttle"
-cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+
+# Compile the Icon Composer document into the bundle. actool emits Assets.car, which
+# CFBundleIconName resolves through and which is what makes this a native icon on
+# macOS 26 and newer — the system draws the document's own layers and applies the
+# material, dark and tinted treatments rather than scaling a flat bitmap. It also
+# emits an icns from the same document as the fallback for older systems, so the two
+# can never drift apart the way a separately generated one would.
+ICON_DOC="$ROOT/Resources/MediaShuttle.icon"
+ICON_PLIST="$BUILD_ROOT/icon-partial.plist"
+xcrun actool \
+    --output-format human-readable-text \
+    --notices --warnings \
+    --platform macosx \
+    --minimum-deployment-target 14.0 \
+    --target-device mac \
+    --app-icon MediaShuttle \
+    --output-partial-info-plist "$ICON_PLIST" \
+    --compile "$APP/Contents/Resources" \
+    "$ICON_DOC"
+
+if [[ ! -f "$APP/Contents/Resources/Assets.car" ]]; then
+    print -u2 "actool produced no Assets.car from $ICON_DOC. Xcode 26 or newer is required."
+    exit 1
+fi
+
 sed \
     -e "s/__VERSION__/$VERSION/g" \
     -e "s/__BUILD__/$BUILD_NUMBER/g" \

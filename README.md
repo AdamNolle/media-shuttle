@@ -182,9 +182,15 @@ Build an ad-hoc-signed universal disk image into `macos/artifacts/`, with a matc
 ./macos/scripts/package-macos.sh 0.0.1
 ```
 
-Set `CODE_SIGN_IDENTITY` to a Developer ID Application identity for signed distribution. The icon is
-authored in **Icon Composer** (`macos/Resources/MediaShuttle.icon`); regenerate the iconset and
-`AppIcon.icns` with `./macos/scripts/build-icon.sh`.
+Set `CODE_SIGN_IDENTITY` to a Developer ID Application identity for signed distribution.
+
+The icon is authored in **Icon Composer** (`macos/Resources/MediaShuttle.icon`) and compiled into the
+bundle by the packaging script, so editing the document is the whole of the workflow — there is
+nothing to regenerate by hand. `actool` emits an `Assets.car`, which `CFBundleIconName` resolves
+through and which is what makes the icon native on macOS 26 and newer: the system draws the
+document's own layers and applies the material, dark and tinted treatments itself, rather than
+scaling a flat bitmap. An `.icns` is emitted from the same document as the fallback for older
+systems. Packaging requires **Xcode 26 or newer**, which is where `.icon` support arrived.
 
 </details>
 

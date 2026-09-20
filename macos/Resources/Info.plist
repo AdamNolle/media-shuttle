@@ -8,8 +8,16 @@
     <string>Media Shuttle</string>
     <key>CFBundleExecutable</key>
     <string>MediaShuttle</string>
+    <!-- CFBundleIconName resolves through Assets.car, which is what makes the icon a
+         native one on macOS 26 and newer: the system draws the Icon Composer document's
+         own layers and applies the material, dark and tinted treatments itself. The
+         icns beside it is the fallback for older systems, which have no asset catalog
+         to read. Both are compiled from Resources/MediaShuttle.icon by actool in
+         scripts/package-macos.sh. -->
+    <key>CFBundleIconName</key>
+    <string>MediaShuttle</string>
     <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
+    <string>MediaShuttle</string>
     <key>CFBundleIdentifier</key>
     <string>com.adamnolle.MediaShuttle</string>
     <key>CFBundleInfoDictionaryVersion</key>
