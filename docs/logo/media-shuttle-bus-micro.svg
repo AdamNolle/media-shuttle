@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="microTitle">
+  <title id="microTitle">Media Shuttle, micro mark</title>
+  <!-- For 16-20px, where the whole bus is about sixteen pixels wide and one unit here is
+       a twentieth of a pixel. Everything that cannot survive that is gone: separate
+       windows merge into a smear, so they are one band; the driver's window is dark on a
+       dark nose and simply disappears, so it goes; the wheel rims land under a pixel, so
+       the tyres are solid. Flat fills — a gradient across nine pixels is a muddier
+       colour, nothing more. The silhouette, the body and the wheel centres still match
+       the larger marks, so nothing jumps at a size boundary.
+
+       What is left is the whole idea: a yellow body, a dark window band, a cut-away
+       corner, and two wheels under it. -->
+
+  <path d="M112 256 H782 L912 386 V670 H112 Z"
+        fill="#16181E" stroke="#16181E" stroke-width="40"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <rect x="138" y="282" width="512" height="362" rx="58" fill="#FFD016"/>
+
+  <rect x="180" y="326" width="428" height="132" rx="28" fill="#0E1015"/>
+
+  <!-- Tyres carry past the skirt far enough to read as wheels at this size. -->
+  <g fill="#0B0C10">
+    <circle cx="280" cy="672" r="94"/>
+    <circle cx="778" cy="672" r="94"/>
+  </g>
+</svg>

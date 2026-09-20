@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="smallTitle">
+  <title id="smallTitle">Media Shuttle, simplified mark</title>
+  <!-- For roughly 24-48px. Same silhouette, same body, same wheel centres and radii as
+       media-shuttle-bus.svg, so switching between the two at a size boundary does not
+       shift anything. What goes is only what turns to mush: the board text, the grille,
+       the roof hatch, the wheel bolts, and one of the two rub rails. Three windows
+       rather than four, because four close up into a single band down here. -->
+
+  <defs>
+    <linearGradient id="sPaint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFDF3E"/>
+      <stop offset="1" stop-color="#F2B400"/>
+    </linearGradient>
+    <linearGradient id="sChassis" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23262D"/>
+      <stop offset="1" stop-color="#0B0C10"/>
+    </linearGradient>
+    <linearGradient id="sGlass" x1="0.2" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#1D2433"/>
+      <stop offset="1" stop-color="#0A0D14"/>
+    </linearGradient>
+    <radialGradient id="sRim" cx="0.36" cy="0.3" r="0.82">
+      <stop offset="0" stop-color="#F6F8FA"/>
+      <stop offset="1" stop-color="#9BA2AC"/>
+    </radialGradient>
+  </defs>
+
+  <path d="M112 256 H782 L912 386 V670 H112 Z"
+        fill="url(#sChassis)" stroke="url(#sChassis)" stroke-width="40"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <rect x="138" y="282" width="512" height="362" rx="54" fill="url(#sPaint)"/>
+
+  <g fill="url(#sGlass)">
+    <rect x="172" y="316" width="130" height="128" rx="14"/>
+    <rect x="329" y="316" width="130" height="128" rx="14"/>
+    <rect x="486" y="316" width="130" height="128" rx="14"/>
+  </g>
+
+  <!-- Driver's window, identical to the detailed mark: it is the cue that makes the
+       shape a bus rather than a box, so it survives every size. -->
+  <path d="M694 316 H784 L840 372 V444 H694 Z" fill="url(#sGlass)"
+        stroke="url(#sGlass)" stroke-width="22" stroke-linejoin="round"/>
+
+  <!-- One rail, on the centreline of the two it replaces. -->
+  <rect x="172" y="514" width="444" height="20" rx="10" fill="#0D0E12"/>
+
+  <g>
+    <circle cx="280" cy="676" r="84" fill="#0E1015"/>
+    <circle cx="280" cy="676" r="42" fill="url(#sRim)"/>
+    <circle cx="778" cy="676" r="84" fill="#0E1015"/>
+    <circle cx="778" cy="676" r="42" fill="url(#sRim)"/>
+  </g>
+</svg>

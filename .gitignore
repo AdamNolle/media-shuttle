@@ -12,3 +12,5 @@ artifacts/
 DerivedData/
 .DS_Store
 .serena/
+docs/logo/export/
+__pycache__/

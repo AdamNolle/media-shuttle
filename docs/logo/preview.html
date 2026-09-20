@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Media Shuttle — logo preview</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 13px/1.55 "Segoe UI", system-ui, sans-serif; background: #101217; color: #E7E9EC; }
+  header { padding: 26px 34px 6px; }
+  h1 { font-size: 14px; letter-spacing: .16em; text-transform: uppercase; margin: 0; color: #9BA1AA; font-weight: 600; }
+  p.note { margin: 6px 0 0; color: #7D838C; max-width: 70ch; }
+  main { display: flex; flex-wrap: wrap; gap: 34px; padding: 24px 34px 40px; align-items: flex-start; }
+  section { display: flex; flex-direction: column; gap: 12px; }
+  h2 { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; margin: 0; color: #7D838C; font-weight: 600; }
+  .row { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .cell span { font: 10px/1 ui-monospace, Consolas, monospace; color: #6E747D; }
+  img { display: block; }
+  .plate { padding: 18px; border-radius: 16px; }
+  .light { background: #F3F4F6; }
+  .dark { background: #0B0C0F; }
+  .red { background: #D33B34; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Media Shuttle — SD card as a shuttle bus</h1>
+  <p class="note">
+    The card's chamfered corner does double duty as the windshield rake, and the driver's window
+    repeats the same 45° cut. Three marks share one grid: the full one above 96px, a simplified
+    one from 32 to 64, and a micro one at 16 to 24, where a bus is sixteen pixels wide.
+  </p>
+</header>
+
+<main>
+  <section>
+    <h2>App icon</h2>
+    <img src="media-shuttle-icon.svg" width="320" height="320" alt="">
+  </section>
+
+  <section>
+    <h2>Bare mark</h2>
+    <div class="row">
+      <div class="cell"><div class="plate light"><img src="media-shuttle-bus.svg" width="230" height="230" alt=""></div><span>on light</span></div>
+      <div class="cell"><div class="plate dark"><img src="media-shuttle-bus.svg" width="230" height="230" alt=""></div><span>on dark</span></div>
+      <div class="cell"><div class="plate red"><img src="media-shuttle-bus.svg" width="230" height="230" alt=""></div><span>on brand red</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Icon sizes — which mark does what</h2>
+    <div class="row">
+      <div class="cell"><img src="media-shuttle-icon.svg" width="128" height="128" alt=""><span>128 full</span></div>
+      <div class="cell"><img src="media-shuttle-icon.svg" width="96" height="96" alt=""><span>96 full</span></div>
+      <div class="cell"><img src="media-shuttle-icon-small.svg" width="64" height="64" alt=""><span>64 simple</span></div>
+      <div class="cell"><img src="media-shuttle-icon-small.svg" width="32" height="32" alt=""><span>32 simple</span></div>
+      <div class="cell"><img src="media-shuttle-icon-micro.svg" width="20" height="20" alt=""><span>20 micro</span></div>
+      <div class="cell"><img src="media-shuttle-icon-micro.svg" width="16" height="16" alt=""><span>16 micro</span></div>
+    </div>
+    <h2>The three marks at one size</h2>
+    <div class="row">
+      <div class="cell"><img src="media-shuttle-icon.svg" width="120" height="120" alt=""><span>full</span></div>
+      <div class="cell"><img src="media-shuttle-icon-small.svg" width="120" height="120" alt=""><span>simplified</span></div>
+      <div class="cell"><img src="media-shuttle-icon-micro.svg" width="120" height="120" alt=""><span>micro</span></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
