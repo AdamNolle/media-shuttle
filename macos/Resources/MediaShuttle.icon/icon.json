@@ -1,22 +1,24 @@
 {
-  "fill" : {
-    "linear-gradient" : [
-      "extended-srgb:0.90234,0.25391,0.20703,1.00000",
-      "extended-srgb:0.35156,0.03516,0.03125,1.00000"
+  "fill": {
+    "linear-gradient": [
+      "extended-srgb:0.92549,0.36078,0.30196,1.00000",
+      "extended-srgb:0.53333,0.12549,0.10196,1.00000"
     ]
   },
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "card.svg",
-          "name" : "Card"
+          "image-name": "card.svg",
+          "name": "Shuttle"
         }
       ]
     }
   ],
-  "supported-platforms" : {
-    "circles" : [ "watchOS" ],
-    "squares" : "shared"
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
   }
 }

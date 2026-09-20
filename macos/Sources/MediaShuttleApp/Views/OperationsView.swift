@@ -138,11 +138,28 @@ private struct SessionPanel: View {
             let total = ByteCountFormatter.shuttleString(model.progress.totalBytes)
             let rate = model.throughputBytesPerSecond.map { Self.split(bytes: Int64($0)) }
 
-            Metric(label: "COPIED", value: model.progress.copiedFiles.formatted(), caption: "files")
+            // An erase is measured in entries deleted, not bytes moved, and reports no byte total.
+            // Its own progress is in the phase, percentage and current entry above; the copy
+            // figures do not apply to it.
+            let inBytes = model.progress.totalBytes > 0
+
+            Metric(
+                label: "COPIED",
+                value: inBytes ? model.progress.copiedFiles.formatted() : "—",
+                caption: "files"
+            )
             MetricDivider()
-            Metric(label: "ALREADY SAFE", value: model.progress.skippedFiles.formatted(), caption: "re-verified")
+            Metric(
+                label: "ALREADY SAFE",
+                value: inBytes ? model.progress.skippedFiles.formatted() : "—",
+                caption: "re-verified"
+            )
             MetricDivider()
-            Metric(label: "PROCESSED", value: processed.value, caption: "\(processed.unit) of \(total)")
+            Metric(
+                label: "PROCESSED",
+                value: inBytes ? processed.value : "—",
+                caption: inBytes ? "\(processed.unit) of \(total)" : "not counted in bytes"
+            )
             MetricDivider()
             Metric(
                 label: "THROUGHPUT",
@@ -286,8 +303,10 @@ private struct ActivityLog: View {
             }
 
             ScrollView {
+                // Every entry the model keeps: the list scrolls, and truncating it at 20 threw
+                // away the older half of a log the model had already decided to hold on to.
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(entries.prefix(20)) { entry in
+                    ForEach(entries) { entry in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Text(entry.date, format: .dateTime.hour().minute().second())
                                 .foregroundStyle(Theme.textMuted)
@@ -319,6 +338,15 @@ private struct EraseBar: View {
         if model.canWipe {
             let root = model.currentCard?.rootURL.path ?? "the card"
             return "Every remaining file on \(root) has a verified copy · typed confirmation required"
+        }
+        switch model.unverifiableFileCount {
+        case 0: break
+        case 1:
+            return "Locked — one file on this card is not recognised camera media, "
+                + "so no transfer can verify it. Copy it off the card yourself."
+        default:
+            return "Locked — \(model.unverifiableFileCount) files on this card are not recognised "
+                + "camera media, so no transfer can verify them. Copy them off the card yourself."
         }
         if model.media.isEmpty, model.currentCard != nil {
             return "No verified media is available to erase."

@@ -27,6 +27,9 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF202420" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF56B870" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FF0E1C12" />
+                    <SolidColorBrush x:Key="ShuttleCardBrush" Color="#FF3E4450" />
+                    <SolidColorBrush x:Key="ShuttleTyreBrush" Color="#FF2F353F" />
+                    <SolidColorBrush x:Key="ShuttleYellowBrush" Color="#FFFFD016" />
                     <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FFCFD3D8" />
                     <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF8B9198" />
                     <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF5C6167" />
@@ -51,12 +54,17 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFF2F5F2" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF287A40" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="ShuttleCardBrush" Color="#FF14161B" />
+                    <SolidColorBrush x:Key="ShuttleTyreBrush" Color="#FF0E1015" />
+                    <SolidColorBrush x:Key="ShuttleYellowBrush" Color="#FFF0B800" />
                     <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FF3F434A" />
                     <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF6B7178" />
                     <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF9AA0A6" />
                     <SolidColorBrush x:Key="MediaKindVideoBrush" Color="#FFC7CCD1" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <SolidColorBrush x:Key="ShuttleGlassBrush" Color="#FF12151C" />
+            <SolidColorBrush x:Key="ShuttleRimBrush" Color="#FFC9CED6" />
             <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FFD33B34" />
             <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#FFC9342D" />
             <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#FFB92D27" />

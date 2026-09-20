@@ -12,24 +12,41 @@ $expectedInstallRoot = 'C:\Users\' + [Environment]::UserName + '\AppData\Local\P
 
 & (Join-Path $repoRoot 'build.ps1') -Clean -SkipInstaller
 
-foreach ($directory in @(
-    $cameraRoot,
-    (Join-Path $cameraRoot 'Photos\JPEGs'),
-    (Join-Path $cameraRoot 'Photos\RAWs'),
-    (Join-Path $cameraRoot 'Photos\Other'),
-    (Join-Path $cameraRoot 'Videos')
-)) {
-    if (-not [IO.Directory]::Exists($directory)) { [void][IO.Directory]::CreateDirectory($directory) }
-}
+# The destination root only. The category folders belong to a transfer, which creates the
+# ones it actually has files for — scaffolding all four here put empty Photos\Other and
+# Videos folders in a destination nothing had been copied to yet.
+if (-not [IO.Directory]::Exists($cameraRoot)) { [void][IO.Directory]::CreateDirectory($cameraRoot) }
 
 $resolvedInstallRoot = [IO.Path]::GetFullPath($installRoot)
 if ($resolvedInstallRoot -ne [IO.Path]::GetFullPath($expectedInstallRoot)) {
     throw 'The application install path did not resolve to the expected per-user location.'
 }
 
-Get-Process -Name 'MediaShuttle' -ErrorAction SilentlyContinue | Stop-Process -Force
+# Stop-Process returns as soon as the kill is requested, not once Windows has released
+# the process's file handles. Replacing the install directory before that happens fails
+# part-way through on a locked runtime DLL and leaves the previous install gutted.
+foreach ($process in @(Get-Process -Name 'MediaShuttle' -ErrorAction SilentlyContinue)) {
+    $process | Stop-Process -Force
+    if (-not $process.WaitForExit(15000)) {
+        throw 'Media Shuttle is still running and could not be closed. Close it and try again.'
+    }
+}
+
 if ([IO.Directory]::Exists($installRoot)) {
-    Remove-Item -LiteralPath $installRoot -Recurse -Force
+    $removed = $false
+    foreach ($attempt in 1..10) {
+        try {
+            Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction Stop
+            $removed = $true
+            break
+        }
+        catch [UnauthorizedAccessException], [IO.IOException] {
+            Start-Sleep -Milliseconds (200 * $attempt)
+        }
+    }
+    if (-not $removed) {
+        throw "Could not replace $installRoot. Something still has a file in it open."
+    }
 }
 New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
 Get-ChildItem -LiteralPath $publishRoot -Force | Copy-Item -Destination $installRoot -Recurse -Force

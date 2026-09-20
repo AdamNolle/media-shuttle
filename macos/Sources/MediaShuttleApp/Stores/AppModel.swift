@@ -41,6 +41,7 @@ final class AppModel {
     var destinationURL: URL
     var currentCard: CardInfo?
     var media: [MediaItem] = []
+    var unverifiableFileCount = 0
     var verifiedSession: TransferSession?
     var reportURL: URL?
     var progress = OperationProgress(
@@ -70,6 +71,7 @@ final class AppModel {
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var presenceTracker = CardPresenceTracker()
+    @ObservationIgnored private var lastScanSignature: String?
 
     init() {
         let applicationSupport = (try? StateStore.defaultRootURL())
@@ -111,8 +113,10 @@ final class AppModel {
         !isBusy && isDestinationAvailable && currentCard != nil && !media.isEmpty
     }
 
+    /// WipeService refuses a card holding content no transfer could have copied. Reflected here so
+    /// erase reads as locked, rather than accepting the typed confirmation and only then refusing.
     var canWipe: Bool {
-        !isBusy && currentCard != nil && verifiedSession?.files.isEmpty == false
+        !isBusy && currentCard != nil && verifiedSession?.files.isEmpty == false && unverifiableFileCount == 0
     }
 
     var mediaCounts: [MediaKind: Int] {
@@ -181,6 +185,8 @@ final class AppModel {
             if currentCard != nil || forceUpdate {
                 currentCard = nil
                 media = []
+                unverifiableFileCount = 0
+                lastScanSignature = nil
                 verifiedSession = nil
                 reportURL = nil
                 updateDisconnectedState()
@@ -189,15 +195,27 @@ final class AppModel {
         }
 
         let previousCardID = currentCard?.id
-        let scanned: [MediaItem]
+
+        // This runs every two seconds for as long as a card stays connected. Walking the whole card
+        // and re-reading every session report each time is minutes of pointless reader and disk
+        // traffic on a full card, so skip it while the card looks untouched. Adding or removing
+        // anything on a camera card moves the free-space figure, which is read fresh above.
+        let signature = "\(card.rootURL.path)|\(card.volumeID)|\(card.freeBytes)"
+        if !forceUpdate, !isNew, previousCardID == card.id, signature == lastScanSignature {
+            return
+        }
+        lastScanSignature = signature
+
+        let scan: CardScan
         do {
-            scanned = try await Task.detached(priority: .utility) {
-                try MediaClassifier.scan(card.rootURL)
+            scan = try await Task.detached(priority: .utility) {
+                try MediaClassifier.scanCard(card.rootURL)
             }.value
         } catch {
             showError("Card scan failed", error.localizedDescription)
             return
         }
+        let scanned = scan.media
         let storedSession = await stateStore.latestVerifiedSession(for: card)
         let session = storedSession.flatMap {
             $0.isEligibleForErase(card: card, media: scanned) ? $0 : nil
@@ -205,6 +223,7 @@ final class AppModel {
         let sessionWasInvalidated = verifiedSession != nil && session == nil
         currentCard = card
         media = scanned
+        unverifiableFileCount = scan.unverifiableFiles.count
         verifiedSession = session
         if let session {
             reportURL = await stateStore.sessionFileURL(for: session)
@@ -227,6 +246,12 @@ final class AppModel {
 
         if isNew || (forceUpdate && previousCardID != card.id) {
             addActivity("Detected \(card.volumeLabel) at \(card.rootURL.path)")
+            if unverifiableFileCount > 0 {
+                addActivity(
+                    "\(unverifiableFileCount) unrecognised file(s) on this card cannot be verified — "
+                    + "erase stays locked."
+                )
+            }
             if isNew, settings.autoTransfer, isDestinationAvailable, !scanned.isEmpty {
                 startTransfer()
             }
@@ -324,6 +349,10 @@ final class AppModel {
             operationEndedAt = .now
             isBusy = false
             operationTask = nil
+
+            // Reading the card does not move its free space, so let the next tick re-derive state
+            // rather than have the skip-unchanged check hold on to what was true before this ran.
+            lastScanSignature = nil
             if verifiedSession == nil { primaryActionTitle = "Transfer and verify" }
         }
     }
@@ -332,8 +361,40 @@ final class AppModel {
         operationTask?.cancel()
     }
 
-    func wipeCard() {
-        guard operationTask == nil, let card = currentCard, let session = verifiedSession else { return }
+    /// The card and verified session the erase confirmation was opened against. The two-second scan
+    /// keeps running while that sheet waits for input and can reassign both, so what is erased has
+    /// to be checked against what was confirmed rather than against whatever is current on return.
+    struct EraseTarget: Equatable, Sendable {
+        let cardID: String
+        let sessionID: String
+    }
+
+    var currentEraseTarget: EraseTarget? {
+        guard canWipe, let card = currentCard, let session = verifiedSession else { return nil }
+        return EraseTarget(cardID: card.id, sessionID: session.sessionID)
+    }
+
+    func wipeCard(expecting expected: EraseTarget) {
+        guard operationTask == nil else {
+            showError(
+                "Operation in progress",
+                "A transfer started while the confirmation was open. Wait for it to finish, then erase the card."
+            )
+            addActivity("Erase cancelled: a transfer started during confirmation.")
+            return
+        }
+        guard let card = currentCard,
+              let session = verifiedSession,
+              card.id == expected.cardID,
+              session.sessionID == expected.sessionID else {
+            showError(
+                "Card changed",
+                "The connected card changed while the confirmation was open. Reconnect it and try erasing again."
+            )
+            addActivity("Erase cancelled: the connected card changed during confirmation.")
+            return
+        }
+
         isBusy = true
         operationStartedAt = .now
         operationEndedAt = nil
@@ -378,6 +439,7 @@ final class AppModel {
             operationEndedAt = .now
             isBusy = false
             operationTask = nil
+            lastScanSignature = nil
         }
     }
 
@@ -452,15 +514,12 @@ final class AppModel {
         banner = nil
     }
 
+    /// The root only, which is what proves the destination is reachable and writable. The category
+    /// folders belong to a transfer, which creates the ones it has files for — scaffolding all four
+    /// here left empty Photos/Other and Videos folders in a destination nothing had been copied to.
     private func prepareDestination() {
         do {
             try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-            for kind in MediaKind.allCases {
-                try FileManager.default.createDirectory(
-                    at: MediaClassifier.destinationFolder(for: kind, under: destinationURL),
-                    withIntermediateDirectories: true
-                )
-            }
             isDestinationAvailable = true
             settings.destinationPath = destinationURL.path
             Task { try? await stateStore.saveSettings(settings) }

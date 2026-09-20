@@ -21,6 +21,16 @@ enum Theme {
     static let textMuted = adaptive(light: 0x6D7279, dark: 0x8B9198)
     static let textLabel = adaptive(light: 0x6D7279, dark: 0x949AA1)
 
+    /// The app mark's palette. The card stays in the dark family in both themes —
+    /// lightened for dark chrome rather than inverted to white, which would turn the
+    /// logo inside out. Glass and rims never change: the glass always sits on the
+    /// yellow body, the rims always on the tyre.
+    static let shuttleYellow = adaptive(light: 0xF0B800, dark: 0xFFD016)
+    static let shuttleCard = adaptive(light: 0x14161B, dark: 0x3E4450)
+    static let shuttleTyre = adaptive(light: 0x0E1015, dark: 0x2F353F)
+    static let shuttleGlass = adaptive(light: 0x12151C, dark: 0x12151C)
+    static let shuttleRim = adaptive(light: 0xC9CED6, dark: 0xC9CED6)
+
     static let accent = adaptive(light: 0xD32F26, dark: 0xE8433A)
     static let accentBright = adaptive(light: 0xC42B1C, dark: 0xFF6A5E)
     static let verified = adaptive(light: 0x2F9E5F, dark: 0x5FD08A)

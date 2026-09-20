@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var model: AppModel
     @State private var showingEraseConfirmation = false
+    @State private var eraseTarget: AppModel.EraseTarget?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,7 +17,11 @@ struct ContentView: View {
                     .frame(width: 1)
                 OperationsView(
                     model: model,
-                    showEraseConfirmation: { showingEraseConfirmation = true }
+                    showEraseConfirmation: {
+                        // Captured as the sheet opens, and checked again on confirm.
+                        eraseTarget = model.currentEraseTarget
+                        showingEraseConfirmation = eraseTarget != nil
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -29,9 +34,13 @@ struct ContentView: View {
         .sheet(isPresented: $showingEraseConfirmation) {
             EraseConfirmationView(model: model) {
                 showingEraseConfirmation = false
-                model.wipeCard()
+                if let eraseTarget {
+                    model.wipeCard(expecting: eraseTarget)
+                }
+                eraseTarget = nil
             } onCancel: {
                 showingEraseConfirmation = false
+                eraseTarget = nil
             }
         }
     }

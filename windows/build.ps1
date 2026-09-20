@@ -33,7 +33,12 @@ if ([IO.Directory]::Exists($publishRoot)) {
 }
 New-Item -ItemType Directory -Path $publishRoot -Force | Out-Null
 
-& (Join-Path $repoRoot 'tools\New-Icon.ps1') -OutputPath $iconPath | Out-Null
+# The icon is a committed asset, built from docs/logo by docs/logo/export.py. It used to
+# be drawn here at build time, which meant the build could only ever ship the mark that
+# one script knew how to draw.
+if (-not [IO.File]::Exists($iconPath)) {
+    throw "The application icon is missing: $iconPath. Rebuild it with 'python docs/logo/export.py'."
+}
 
 dotnet restore $project
 if ($LASTEXITCODE -ne 0) { throw "Package restore failed with exit code $LASTEXITCODE." }

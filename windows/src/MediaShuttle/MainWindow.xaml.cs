@@ -19,11 +19,31 @@ public sealed partial class MainWindow : Window
 {
     private const double ScanPulseWidthPercent = 16;
     private const double MinimumActivityHeight = 88;
-    private static readonly Color NeutralStatusColor = Color.FromArgb(255, 124, 124, 124);
-    private static readonly Color ActiveStatusColor = Color.FromArgb(255, 255, 77, 68);
-    private static readonly Color VerifiedStatusColor = Color.FromArgb(255, 56, 166, 92);
-    private static readonly Color WarningStatusColor = Color.FromArgb(255, 202, 139, 39);
-    private static readonly Color ErrorStatusColor = Color.FromArgb(255, 196, 43, 43);
+    private const double MaximumActivityHeight = 300;
+    private const double MinimumActivityRowHeight = 125;
+    private const double SidebarWidth = 240;
+    private const double ColumnGap = 22;
+    private const double PanelPadding = 21;
+    // Stacking the sidebar above the operations column costs it its shape: a panel designed for a
+    // 240px column, drawn 700px wide, is mostly gaps. Two columns hold down to the point where the
+    // operations side would be narrower than the sidebar itself.
+    private const double NarrowLayoutWidth = 620;
+    private const double StackedActionWidth = 560;
+    private const double MaximumHeroWidth = 1100;
+    private const int MaximumActivityLines = 200;
+
+    /// <summary>
+    /// A copy reports progress after every megabyte, which on a fast reader is hundreds of times a
+    /// second. Redrawing the readouts that often costs more time than it reports on, so identical
+    /// phases are coalesced to a rate a person can actually read.
+    /// </summary>
+    private static readonly TimeSpan ProgressRedrawInterval = TimeSpan.FromMilliseconds(66);
+
+    private static readonly SolidColorBrush NeutralStatusBrush = new(Color.FromArgb(255, 124, 124, 124));
+    private static readonly SolidColorBrush ActiveStatusBrush = new(Color.FromArgb(255, 255, 77, 68));
+    private static readonly SolidColorBrush VerifiedStatusBrush = new(Color.FromArgb(255, 56, 166, 92));
+    private static readonly SolidColorBrush WarningStatusBrush = new(Color.FromArgb(255, 202, 139, 39));
+    private static readonly SolidColorBrush ErrorStatusBrush = new(Color.FromArgb(255, 196, 43, 43));
 
     private readonly bool _launchInBackground;
     private string _destinationRoot;
@@ -39,13 +59,15 @@ public sealed partial class MainWindow : Window
     private int _scanPulseDirection = 1;
     private readonly TrayIconService _trayIcon;
     private readonly AppWindow _appWindow;
-    private readonly SolidColorBrush _progressFillActiveBrush = new(ActiveStatusColor);
-    private readonly SolidColorBrush _progressFillCompleteBrush = new(VerifiedStatusColor);
     private AppSettings _settings = new();
     private CardInfo? _currentCard;
     private TransferSession? _verifiedSession;
     private CancellationTokenSource? _operationCancellation;
     private DateTimeOffset? _operationStartedUtc;
+    private double _appliedLayoutWidth;
+    private DateTimeOffset _lastProgressRedraw;
+    private OperationPhase _lastProgressPhase = OperationPhase.Idle;
+    private string _lastProgressItem = string.Empty;
     private string? _lastSessionFilePath;
     private bool _settingsReady;
     private bool _scanInProgress;
@@ -97,19 +119,23 @@ public sealed partial class MainWindow : Window
             _placementPending = true;
             _appWindow.Move(new PointInt32(-30000, -30000));
         }
-        _appWindow.Changed += (_, args) =>
+        // The ScrollViewer is the one thing that knows how much room the layout really has.
+        // AppWindow.Size counts the window frame as well, announces a resize before the content is
+        // laid out again, and is in physical pixels, so every reader of it had to undo the display
+        // scale first. This fires once the ScrollViewer has been given its new size, already in the
+        // units the layout is written in.
+        RootScrollViewer.SizeChanged += (_, args) =>
         {
-            if (args.DidSizeChange)
-            {
-                UpdateResponsiveLayout(windowHandle);
-            }
+            UpdateResponsiveLayout();
+            ApplyActivityListHeight(args.NewSize.Height);
         };
-        UpdateResponsiveLayout(windowHandle);
 
-        // AppWindow.Changed announces a resize before the content is laid out again, so the viewport
-        // is still the old one there. This fires once the ScrollViewer has actually been given its
-        // new size, and hands that size over directly.
-        RootScrollViewer.SizeChanged += (_, args) => ApplyActivityListHeight(args.NewSize.Height);
+        // A vertical scroll bar appearing takes its width out of the viewport without changing the
+        // ScrollViewer's own size, so SizeChanged alone left the layout a scroll bar wider than the
+        // room it had and clipped its right-hand edge. Following the viewport itself covers both.
+        RootScrollViewer.RegisterPropertyChangedCallback(
+            ScrollViewer.ViewportWidthProperty,
+            (_, _) => UpdateResponsiveLayout());
         Root.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
         UpdateTitleBarColors();
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "MediaShuttle.ico");
@@ -212,30 +238,41 @@ public sealed partial class MainWindow : Window
         _appWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
-    private void UpdateResponsiveLayout(IntPtr windowHandle)
+    private void UpdateResponsiveLayout()
     {
-        double scale = Math.Max(1.0, NativeMethods.GetDpiForWindow(windowHandle) / 96.0);
+        // ViewportWidth rather than ActualWidth: the difference between them is a vertical scroll
+        // bar's worth of room the content cannot use, and with horizontal scrolling disabled
+        // anything wider than the viewport is clipped rather than reachable.
+        double contentWidth = RootScrollViewer.ViewportWidth > 0
+            ? RootScrollViewer.ViewportWidth
+            : RootScrollViewer.ActualWidth;
+        if (contentWidth <= 0 || Math.Abs(contentWidth - _appliedLayoutWidth) < 0.5)
+        {
+            return;
+        }
+        _appliedLayoutWidth = contentWidth;
 
-        // This runs from AppWindow.Changed, which fires before the content is laid out again, so
-        // the ScrollViewer's viewport still describes the previous size. The window is the only
-        // measurement that is current here.
-        double width = _appWindow.Size.Width / scale;
-        bool narrow = width < 900;
+        // A ScrollViewer measures its content with the height it can scroll into but the width it
+        // cannot, so MainLayout is centred at its desired width rather than stretched, and has to
+        // be given the width explicitly for anything inside it to reflow with the window.
+        MainLayout.Width = contentWidth;
 
-        // ScrollViewer only constrains width along an axis it can scroll, so with horizontal
-        // scrolling disabled it otherwise hands MainLayout unbounded width and its content never
-        // wraps or reflows. Pin it to the window's actual content width so it, and everything
-        // inside it, resizes as the window is resized.
-        MainLayout.Width = Math.Max(0, width);
+        // What the layout is actually drawn at: past the maximum it stays put and centres instead,
+        // so every breakpoint below has to be measured against this, not the window.
+        double width = Math.Min(contentWidth, MainLayout.MaxWidth);
+        bool narrow = width < NarrowLayoutWidth;
 
-        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(240);
+        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(SidebarWidth);
         OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         Grid.SetColumn(SourcePanel, 0);
         Grid.SetRow(SourcePanel, 0);
         Grid.SetColumn(OperationsPanel, narrow ? 0 : 1);
         Grid.SetRow(OperationsPanel, narrow ? 1 : 0);
-        MainLayout.ColumnSpacing = narrow ? 0 : 22;
-        MainLayout.Padding = narrow ? new Thickness(16, 14, 16, 22) : new Thickness(24, 22, 24, 26);
+        MainLayoutTopRow.Height = narrow ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+        MainLayoutBottomRow.Height = narrow ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        MainLayout.ColumnSpacing = narrow ? 0 : ColumnGap;
+        Thickness padding = narrow ? new Thickness(16, 14, 16, 22) : new Thickness(24, 22, 24, 26);
+        MainLayout.Padding = padding;
 
         bool compactTitleBar = width < 760;
         bool iconOnlyTitleBar = width < 520;
@@ -249,10 +286,34 @@ public sealed partial class MainWindow : Window
         SettingsButton.Margin = compactTitleBar ? new Thickness(6, 0, 6, 0) : new Thickness(10, 0, 10, 0);
         AppTitleBar.Margin = new Thickness(iconOnlyTitleBar ? 10 : 14, 0, 160, 0);
 
-        // Width the session statistics actually get: the whole window when stacked, minus the
-        // sidebar and the gap between the columns when they sit side by side.
-        double statsWidth = narrow ? width : width - 240 - 22;
-        SetSessionStatsColumns(statsWidth switch
+        // Width the operations column itself is drawn at: the layout less its padding, and less the
+        // sidebar and the gap between the columns while the two sit side by side. Everything below
+        // reflows against this rather than the window, which is up to 262px wider.
+        double operationsWidth = width - padding.Left - padding.Right - (narrow ? 0 : SidebarWidth + ColumnGap);
+        double panelWidth = operationsWidth - PanelPadding * 2;
+
+        // An action beside a headline this narrow leaves neither of them a readable line, so below
+        // the breakpoint they stack instead.
+        HeroGrid.Width = Math.Min(operationsWidth, MaximumHeroWidth);
+
+        bool stackActions = operationsWidth < StackedActionWidth;
+        SetActionPlacement(HeroGrid, HeroActionColumn, HeroActionPanel, stackActions, 226, 26);
+        SetActionPlacement(EraseGrid, EraseActionColumn, WipeButton, stackActions, 236, 22);
+
+        // A 36px headline is three or four lines of it before a narrow window has said anything
+        // useful, so the display type comes down with the space it is given.
+        (double titleSize, double subtitleSize) = operationsWidth switch
+        {
+            < 420 => (24d, 13d),
+            < 620 => (28d, 14d),
+            _ => (36d, 15d)
+        };
+        HeroTitleText.FontSize = titleSize;
+        HeroTitleText.LineHeight = Math.Round(titleSize * 7 / 6);
+        HeroSubtitleText.FontSize = subtitleSize;
+        HeroSubtitleText.LineHeight = Math.Round(subtitleSize * 1.47);
+
+        SetSessionStatsColumns(panelWidth switch
         {
             < 380 => 2,
             < 620 => 3,
@@ -260,6 +321,33 @@ public sealed partial class MainWindow : Window
         });
 
         ScheduleActivityListHeightUpdate();
+    }
+
+    /// <summary>
+    /// Puts a panel's action control beside its text, or beneath it once the two side by side would
+    /// leave the text narrower than the words in it.
+    /// </summary>
+    private static void SetActionPlacement(
+        Grid grid,
+        ColumnDefinition actionColumn,
+        FrameworkElement action,
+        bool stacked,
+        double columnWidth,
+        double columnGap)
+    {
+        actionColumn.Width = stacked ? new GridLength(0) : new GridLength(columnWidth);
+        Grid.SetColumn(action, stacked ? 0 : 1);
+        Grid.SetRow(action, stacked ? 1 : 0);
+
+        // Stacked, the action keeps the width it has beside the text rather than stretching the
+        // whole way across: a 440px-wide primary button reads as a banner, not as a button.
+        action.HorizontalAlignment = stacked ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+        action.Width = stacked ? columnWidth : double.NaN;
+
+        // Column spacing is reserved either side of a zero-width column too, which would leave the
+        // stacked layout a dead strip down its right edge.
+        grid.ColumnSpacing = stacked ? 0 : columnGap;
+        grid.RowSpacing = stacked ? 14 : 0;
     }
 
     /// <summary>
@@ -313,6 +401,9 @@ public sealed partial class MainWindow : Window
 
     private void ApplyActivityListHeight(double viewportHeight)
     {
+        // The star row only needs to reserve room while there is a log in it. Left at a minimum
+        // with the log switched off, it would hold a gap open above the erase bar for nothing.
+        ActivityRow.MinHeight = ActivitySection.Visibility == Visibility.Visible ? MinimumActivityRowHeight : 0;
         if (ActivitySection.Visibility != Visibility.Visible)
         {
             return;
@@ -328,17 +419,20 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // No upper bound. The list is the only region with more to show given more room, and it
-        // now carries a panel border, so letting it take all of the remaining height keeps the
-        // erase bar on the bottom edge instead of stranding a gap under it on a tall window.
-        ActivityList.Height = Math.Max(viewportHeight - everythingElse, MinimumActivityHeight);
+        // Capped: the erase bar is held on the bottom edge by the star row this sits in, not by the
+        // log growing to fill it, so past the cap the spare height shows as room below the log
+        // rather than as a very large empty box with one line in it.
+        ActivityList.Height = Math.Clamp(
+            viewportHeight - everythingElse,
+            MinimumActivityHeight,
+            MaximumActivityHeight);
     }
 
     private void SetProgressFill(double startPercent, double widthPercent, bool complete)
     {
         startPercent = Math.Clamp(startPercent, 0, 100);
         widthPercent = Math.Clamp(widthPercent, 0, 100 - startPercent);
-        ProgressFillRectangle.Fill = complete ? _progressFillCompleteBrush : _progressFillActiveBrush;
+        ProgressFillRectangle.Fill = complete ? VerifiedStatusBrush : ActiveStatusBrush;
         ProgressBeforeColumn.Width = new GridLength(startPercent, GridUnitType.Star);
         ProgressFillColumn.Width = new GridLength(widthPercent, GridUnitType.Star);
         ProgressAfterColumn.Width = new GridLength(100 - startPercent - widthPercent, GridUnitType.Star);
@@ -396,7 +490,7 @@ public sealed partial class MainWindow : Window
         Exception? destinationError = null;
         try
         {
-            EnsureDestinationFolders(_destinationRoot);
+            EnsureDestinationRoot(_destinationRoot);
         }
         catch (Exception exception) when (IsDestinationException(exception))
         {
@@ -436,7 +530,7 @@ public sealed partial class MainWindow : Window
                 "Destination unavailable",
                 "The saved destination could not be opened. Choose an available folder before transferring.");
             AddActivity("Saved destination unavailable: " + destinationError.Message);
-            SetTopStatus("Choose a destination", ErrorStatusColor);
+            SetTopStatus("Choose a destination", ErrorStatusBrush);
 
             // The window was already hidden immediately on launch (see the Activated handler
             // above) so a bad saved destination isn't silently invisible in the tray — surface
@@ -498,6 +592,7 @@ public sealed partial class MainWindow : Window
             _unverifiableFileCount = scan.UnverifiableFiles.Count;
             _lastScannedMediaCount = media.Count;
             CardStatsText.Text = $"{media.Count:N0} assets · {FormatBytes(media.Sum(item => item.Size))}";
+            UpdateCapacity(card);
             UpdateCardContents(media);
             _verifiedSession = await _stateStore.LoadLatestVerifiedForCardAsync(card);
 
@@ -599,13 +694,14 @@ public sealed partial class MainWindow : Window
 
         _busy = true;
         _operationStartedUtc = DateTimeOffset.UtcNow;
+        ResetProgressThrottle();
         _operationCancellation = new CancellationTokenSource();
         StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: true);
         TransferButton.Content = "Scanning media…";
         HeroTitleText.Text = "Copying and verifying your media.";
         HeroSubtitleText.Text = "Each file is written safely, checked with SHA-256, then made visible at the destination.";
-        SetTopStatus("Transfer active", ActiveStatusColor);
+        SetTopStatus("Transfer active", ActiveStatusBrush);
         AddActivity($"Transfer started from {_currentCard.RootPath}");
 
         try
@@ -635,7 +731,7 @@ public sealed partial class MainWindow : Window
         {
             PhaseText.Text = "CANCELLED";
             AddActivity("Transfer cancelled. Completed files remain safe; temporary files were removed.");
-            SetTopStatus("Transfer cancelled", WarningStatusColor);
+            SetTopStatus("Transfer cancelled", WarningStatusBrush);
             ShowMessage(
                 "Transfer cancelled",
                 "Completed destination files were kept and temporary files were removed.",
@@ -647,7 +743,7 @@ public sealed partial class MainWindow : Window
             ShowError("Transfer failed", exception.Message);
             AddActivity("Transfer failed: " + exception.Message);
             await _logger.WriteAsync("Transfer failed: " + exception);
-            SetTopStatus("Needs attention", ErrorStatusColor);
+            SetTopStatus("Needs attention", ErrorStatusBrush);
         }
         finally
         {
@@ -751,12 +847,13 @@ public sealed partial class MainWindow : Window
 
         _busy = true;
         _operationStartedUtc = DateTimeOffset.UtcNow;
+        ResetProgressThrottle();
         StatusInfoBar.IsOpen = false;
         SetOperationControls(true, allowCancel: false);
         WipeButton.IsEnabled = false;
         HeroTitleText.Text = "Re-verifying before erase.";
         HeroSubtitleText.Text = "Deletion starts only after every remaining media file matches its destination copy.";
-        SetTopStatus("Erase active", ActiveStatusColor);
+        SetTopStatus("Erase active", ActiveStatusBrush);
         AddActivity("Erase approved. Re-verifying card media before deletion.");
 
         try
@@ -778,7 +875,7 @@ public sealed partial class MainWindow : Window
                 "The post-erase scan found no remaining media or user content. The card is ready for the camera.";
             TransferButton.Content = "No media found";
             WipeDescriptionText.Text = "Erase complete. Connect another card or use this card in your camera.";
-            SetTopStatus("Card empty", VerifiedStatusColor);
+            SetTopStatus("Card empty", VerifiedStatusBrush);
             AddActivity($"Erase complete. {result.DeletedFiles:N0} files removed; post-erase scan empty.");
             ShowNotification("Card contents erased", $"{result.DeletedFiles:N0} files removed successfully.");
             ShowMessage(
@@ -791,7 +888,7 @@ public sealed partial class MainWindow : Window
             ShowError("Card erase did not complete", exception.Message);
             AddActivity("Erase stopped: " + exception.Message);
             await _logger.WriteAsync("Card erase failed: " + exception);
-            SetTopStatus("Erase needs attention", ErrorStatusColor);
+            SetTopStatus("Erase needs attention", ErrorStatusBrush);
             WipeButton.IsEnabled = _verifiedSession is not null;
         }
         finally
@@ -805,6 +902,22 @@ public sealed partial class MainWindow : Window
     private void UpdateProgress(OperationProgress progress)
     {
         bool complete = progress.Phase == OperationPhase.Complete;
+
+        // Every report that moves the operation on is drawn: a new phase, a new file, and the last
+        // one of all. What is dropped is the stream of identical-looking megabyte reports in
+        // between, which no one can read at that rate and which the layout pass cannot keep up with
+        // on a fast card reader.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        bool sameStep = progress.Phase == _lastProgressPhase &&
+                        progress.CurrentItem == _lastProgressItem;
+        if (!complete && sameStep && now - _lastProgressRedraw < ProgressRedrawInterval)
+        {
+            return;
+        }
+        _lastProgressPhase = progress.Phase;
+        _lastProgressItem = progress.CurrentItem;
+        _lastProgressRedraw = now;
+
         if (progress.Phase == OperationPhase.Scanning)
         {
             StartScanPulse();
@@ -833,15 +946,27 @@ public sealed partial class MainWindow : Window
             CurrentFileText.Text = FormatCurrentActivity(progress);
         }
         PercentText.Text = $"{progress.Percent:0}%";
-        CopiedText.Text = $"{progress.CopiedFiles:N0} files";
-        SkippedText.Text = $"{progress.SkippedFiles:N0} files";
-        ProcessedText.Text = FormatBytes(progress.ProcessedBytes);
 
-        TimeSpan elapsed = _operationStartedUtc is { } startedAt ? DateTimeOffset.UtcNow - startedAt : TimeSpan.Zero;
+        // An erase is measured in entries deleted, not bytes moved, and reports no byte total. Its
+        // own progress is in the phase, percentage and current entry above; the copy figures do not
+        // apply to it, and reporting the entry count through them showed "12 B" at "0 MB/s avg".
+        bool measuredInBytes = progress.TotalBytes > 0;
+        CopiedText.Text = measuredInBytes ? $"{progress.CopiedFiles:N0} files" : "—";
+        SkippedText.Text = measuredInBytes ? $"{progress.SkippedFiles:N0} files" : "—";
+        ProcessedText.Text = measuredInBytes ? FormatBytes(progress.ProcessedBytes) : "—";
+
+        TimeSpan elapsed = _operationStartedUtc is { } startedAt ? now - startedAt : TimeSpan.Zero;
         ElapsedText.Text = FormatElapsed(elapsed);
-        ThroughputText.Text = elapsed.TotalSeconds >= 1
+        ThroughputText.Text = measuredInBytes && elapsed.TotalSeconds >= 1
             ? FormatThroughput(progress.ProcessedBytes, elapsed)
             : "—";
+    }
+
+    private void ResetProgressThrottle()
+    {
+        _lastProgressRedraw = DateTimeOffset.MinValue;
+        _lastProgressPhase = OperationPhase.Idle;
+        _lastProgressItem = string.Empty;
     }
 
     private static string FormatCurrentActivity(OperationProgress progress)
@@ -912,7 +1037,7 @@ public sealed partial class MainWindow : Window
         TransferButton.IsEnabled = !_busy && _destinationAvailable;
         WipeDescriptionText.Text = LockedEraseDescription();
         UpdateEraseBadge(unlocked: false);
-        SetTopStatus("Media detected", ActiveStatusColor);
+        SetTopStatus("Media detected", ActiveStatusBrush);
         ApplySessionFooter(null, "Ready to transfer and verify");
     }
 
@@ -928,7 +1053,7 @@ public sealed partial class MainWindow : Window
         WipeButton.IsEnabled = true;
         WipeDescriptionText.Text = "Unlocked — every remaining media file has a verified destination copy.";
         UpdateEraseBadge(unlocked: true);
-        SetTopStatus($"{card.VolumeLabel} CONNECTED", VerifiedStatusColor);
+        SetTopStatus($"{card.VolumeLabel} CONNECTED", VerifiedStatusBrush);
         ApplySessionFooter(session);
     }
 
@@ -949,7 +1074,7 @@ public sealed partial class MainWindow : Window
         UpdateEraseBadge(unlocked: canWipe);
         SetTopStatus(
             canWipe ? $"{card.VolumeLabel} CONNECTED" : "Card empty",
-            canWipe ? VerifiedStatusColor : NeutralStatusColor);
+            canWipe ? VerifiedStatusBrush : NeutralStatusBrush);
         ApplySessionFooter(canWipe ? _verifiedSession : null, "No supported media on this card");
     }
 
@@ -964,6 +1089,25 @@ public sealed partial class MainWindow : Window
     {
         CardLabelText.Text = card.VolumeLabel;
         CardDetailText.Text = $"{card.RootPath} · {card.DriveType} media";
+        UpdateCapacity(card);
+    }
+
+    private void UpdateCapacity(CardInfo? card)
+    {
+        if (card is null || card.TotalBytes <= 0)
+        {
+            CapacityText.Text = "—";
+            CapacityUsedColumn.Width = new GridLength(0, GridUnitType.Star);
+            CapacityFreeColumn.Width = new GridLength(100, GridUnitType.Star);
+            CapacityBar.Opacity = 0.35;
+            return;
+        }
+
+        double usedFraction = Math.Clamp((double)card.UsedBytes / card.TotalBytes, 0, 1);
+        CapacityText.Text = $"{FormatBytes(card.UsedBytes)} / {FormatBytes(card.TotalBytes)}";
+        CapacityUsedColumn.Width = new GridLength(usedFraction, GridUnitType.Star);
+        CapacityFreeColumn.Width = new GridLength(1 - usedFraction, GridUnitType.Star);
+        CapacityBar.Opacity = 1.0;
     }
 
     private void UpdateDisconnectedState()
@@ -971,6 +1115,7 @@ public sealed partial class MainWindow : Window
         CardLabelText.Text = "No card connected";
         CardDetailText.Text = "Insert a removable camera card to begin.";
         CardStatsText.Text = "—";
+        UpdateCapacity(null);
         UpdateCardContents([]);
         HeroTitleText.Text = "Ready for your next card.";
         HeroSubtitleText.Text =
@@ -980,7 +1125,7 @@ public sealed partial class MainWindow : Window
         WipeButton.IsEnabled = false;
         WipeDescriptionText.Text = "Locked until every remaining media file has a verified destination copy.";
         UpdateEraseBadge(unlocked: false);
-        SetTopStatus("Waiting for media", NeutralStatusColor);
+        SetTopStatus("Waiting for media", NeutralStatusBrush);
         ApplySessionFooter(null);
     }
 
@@ -1072,10 +1217,10 @@ public sealed partial class MainWindow : Window
         SessionTransferAgainButton.IsEnabled = !active && _destinationAvailable && _verifiedSession is not null;
     }
 
-    private void SetTopStatus(string text, Color color)
+    private void SetTopStatus(string text, Brush brush)
     {
         TopStatusText.Text = text;
-        StatusDot.Fill = new SolidColorBrush(color);
+        StatusDot.Fill = brush;
     }
 
     private void ShowMessage(string title, string message, InfoBarSeverity severity)
@@ -1090,8 +1235,11 @@ public sealed partial class MainWindow : Window
 
     private void AddActivity(string message)
     {
+        // The list is sized to fill whatever height the window has spare, which on a tall window is
+        // far more than the six lines this used to keep. It scrolls, so the cap is only here to
+        // stop an app that lives in the tray for weeks growing without bound.
         _activity.Insert(0, $"{DateTime.Now:HH:mm:ss}  {message}");
-        while (_activity.Count > 6)
+        while (_activity.Count > MaximumActivityLines)
         {
             _activity.RemoveAt(_activity.Count - 1);
         }
@@ -1146,7 +1294,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            EnsureDestinationFolders(selectedPath);
+            EnsureDestinationRoot(selectedPath);
             _destinationRoot = selectedPath;
             _destinationAvailable = true;
             UpdateDestinationDisplay();
@@ -1215,13 +1363,14 @@ public sealed partial class MainWindow : Window
             : Color.FromArgb(48, 255, 255, 255);
     }
 
-    private static void EnsureDestinationFolders(string destinationRoot)
-    {
-        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "JPEGs"));
-        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "RAWs"));
-        Directory.CreateDirectory(Path.Combine(destinationRoot, "Photos", "Other"));
-        Directory.CreateDirectory(Path.Combine(destinationRoot, "Videos"));
-    }
+    /// <summary>
+    /// The root only, which is what proves the destination is reachable and writable. The category
+    /// folders belong to a transfer, which creates the ones it has files for — scaffolding all four
+    /// here left empty Photos\Other and Videos folders sitting in a destination nothing had been
+    /// copied to yet.
+    /// </summary>
+    private static void EnsureDestinationRoot(string destinationRoot) =>
+        Directory.CreateDirectory(destinationRoot);
 
     private static bool IsDestinationException(Exception exception) =>
         exception is IOException or UnauthorizedAccessException or NotSupportedException;
@@ -1253,7 +1402,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            EnsureDestinationFolders(_destinationRoot);
+            EnsureDestinationRoot(_destinationRoot);
             Process.Start(new ProcessStartInfo(_destinationRoot) { UseShellExecute = true });
         }
         catch (Exception exception) when (
@@ -1263,7 +1412,7 @@ public sealed partial class MainWindow : Window
             SetOperationControls(false, allowCancel: false);
             ShowError("Destination unavailable", exception.Message);
             AddActivity("Destination unavailable: " + exception.Message);
-            SetTopStatus("Choose a destination", ErrorStatusColor);
+            SetTopStatus("Choose a destination", ErrorStatusBrush);
         }
     }
 

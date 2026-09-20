@@ -18,16 +18,29 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Viewbox x:Name="AppLogo" Width="28" Height="19" VerticalAlignment="Center" AutomationProperties.Name="Fast media card logo">
-                <Canvas Width="76" Height="48">
-                    <Line X1="2" Y1="13" X2="25" Y2="13" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                    <Line X1="7" Y1="24" X2="25" Y2="24" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                    <Line X1="13" Y1="35" X2="25" Y2="35" Stroke="{ThemeResource SpeedRedBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                    <Path Data="M30,3 L56,3 L71,18 L71,45 L30,45 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" />
-                    <Path Data="M56,3 L56,18 L71,18" Stroke="{ThemeResource ApplicationPageBackgroundThemeBrush}" StrokeThickness="3" Fill="Transparent" />
-                    <Rectangle Canvas.Left="39" Canvas.Top="29" Width="5" Height="10" Fill="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
-                    <Rectangle Canvas.Left="48" Canvas.Top="29" Width="5" Height="10" Fill="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
-                    <Rectangle Canvas.Left="57" Canvas.Top="29" Width="5" Height="10" Fill="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
+            <!-- The app mark: the SD card drawn as a shuttle bus, on the same grid as
+                 docs/logo/media-shuttle-bus-small.svg. The card stays dark in both
+                 themes — lightened for dark chrome rather than flipped to white, which
+                 turned the logo inside out. Glass and rims never change: the glass
+                 always sits on the yellow body, the rims always on the tyre. -->
+            <Viewbox x:Name="AppLogo" Width="30" Height="19" VerticalAlignment="Center" AutomationProperties.Name="Media Shuttle logo">
+                <Canvas Width="840" Height="524">
+                    <Path Data="M20,20 H690 L820,150 V434 H20 Z"
+                          Fill="{ThemeResource ShuttleCardBrush}"
+                          Stroke="{ThemeResource ShuttleCardBrush}" StrokeThickness="40"
+                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    <Rectangle Canvas.Left="46" Canvas.Top="46" Width="512" Height="362" RadiusX="54" RadiusY="54" Fill="{ThemeResource ShuttleYellowBrush}" />
+                    <Rectangle Canvas.Left="80" Canvas.Top="80" Width="130" Height="128" RadiusX="14" RadiusY="14" Fill="{ThemeResource ShuttleGlassBrush}" />
+                    <Rectangle Canvas.Left="237" Canvas.Top="80" Width="130" Height="128" RadiusX="14" RadiusY="14" Fill="{ThemeResource ShuttleGlassBrush}" />
+                    <Rectangle Canvas.Left="394" Canvas.Top="80" Width="130" Height="128" RadiusX="14" RadiusY="14" Fill="{ThemeResource ShuttleGlassBrush}" />
+                    <Path Data="M602,80 H692 L748,136 V208 H602 Z"
+                          Fill="{ThemeResource ShuttleGlassBrush}"
+                          Stroke="{ThemeResource ShuttleGlassBrush}" StrokeThickness="22" StrokeLineJoin="Round" />
+                    <Rectangle Canvas.Left="80" Canvas.Top="278" Width="444" Height="20" RadiusX="10" RadiusY="10" Fill="{ThemeResource ShuttleGlassBrush}" />
+                    <Ellipse Canvas.Left="104" Canvas.Top="356" Width="168" Height="168" Fill="{ThemeResource ShuttleTyreBrush}" />
+                    <Ellipse Canvas.Left="146" Canvas.Top="398" Width="84" Height="84" Fill="{ThemeResource ShuttleRimBrush}" />
+                    <Ellipse Canvas.Left="602" Canvas.Top="356" Width="168" Height="168" Fill="{ThemeResource ShuttleTyreBrush}" />
+                    <Ellipse Canvas.Left="644" Canvas.Top="398" Width="84" Height="84" Fill="{ThemeResource ShuttleRimBrush}" />
                 </Canvas>
             </Viewbox>
 
@@ -78,23 +91,30 @@
                     <ColumnDefinition x:Name="SourceColumn" Width="240" />
                     <ColumnDefinition x:Name="OperationsColumn" Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- Whichever row holds the operations column is given the spare height of a tall
+                     window in code, so that column's own flexible row can pass it on to the gap
+                     above the erase bar. Left as two Auto rows, the spare height stopped here and
+                     stranded the erase bar in the middle of the window. -->
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition x:Name="MainLayoutTopRow" Height="*" />
+                    <RowDefinition x:Name="MainLayoutBottomRow" Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Border x:Name="SourcePanel" Grid.Column="0" Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="18" AutomationProperties.Name="Source media summary">
                     <Grid RowSpacing="0">
-                        <!-- Divider bands are fixed; the single star row sits between the card
-                             summary and the destination, so a tall window puts the destination at
-                             the foot of the panel instead of leaving the lower half of the card
-                             empty. Spreading every section apart instead just looks unmoored. -->
+                        <!-- The sections keep their own spacing and the spare height of a tall
+                             window falls to the single star row at the foot, where the folder
+                             legend anchors to it. Giving that height to the bands between sections
+                             instead opens holes in the middle of the panel: this column can be
+                             hundreds of pixels shorter than the one beside it. -->
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="26" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" MinHeight="26" />
+                            <RowDefinition Height="26" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" MinHeight="14" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
@@ -184,12 +204,27 @@
                                     <TextBlock x:Name="VideoCountText" Grid.Column="2" Text="0" FontFamily="Consolas" FontSize="10.5" />
                                 </Grid>
                             </StackPanel>
+
+                            <!-- The card's own capacity: known since the first scan, never shown
+                                 until now, and the natural occupant of the space a tall window
+                                 used to leave empty between this panel's sections. -->
+                            <Grid Margin="0,4,0,0">
+                                <TextBlock Text="CARD USED" Style="{StaticResource SectionLabelStyle}" />
+                                <TextBlock x:Name="CapacityText" Text="—" HorizontalAlignment="Right" FontFamily="Consolas" FontSize="10.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.Name="Card space used" />
+                            </Grid>
+                            <Grid x:Name="CapacityBar" Height="6" Background="{ThemeResource ControlFillColorDefaultBrush}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="CapacityUsedColumn" Width="0*" />
+                                    <ColumnDefinition x:Name="CapacityFreeColumn" Width="100*" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Grid>
                         </StackPanel>
 
-                        <!-- Bottom-aligned inside the star row with the same 13px gap it would have
-                             if the row were centred at its 26px minimum, so a short window looks
-                             exactly as before and a tall one grows the space above the rule. -->
-                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Bottom" Margin="0,0,0,13" />
+                        <!-- Centred like the rule above it: at the 26px minimum that is the same
+                             13px either side a short window has always had, and a taller window
+                             grows both sides of both rules evenly. -->
+                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
 
                         <StackPanel Grid.Row="5" Spacing="9">
                             <TextBlock Text="DESTINATION" Style="{StaticResource SectionLabelStyle}" />
@@ -214,33 +249,51 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
-                            <TextBlock FontFamily="Consolas" FontSize="10" LineHeight="16" Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="Photos\JPEGs&#10;Photos\RAWs&#10;Photos\Other&#10;Videos" />
                         </StackPanel>
+
+                        <!-- The sorting scheme, anchored to the foot of the panel so the height a
+                             tall window leaves over reads as the gap above a footnote rather than
+                             as an unexplained hole. -->
+                        <TextBlock Grid.Row="7" FontFamily="Consolas" FontSize="10" LineHeight="16" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Bottom" Text="Photos\JPEGs&#10;Photos\RAWs&#10;Photos\Other&#10;Videos" AutomationProperties.Name="Destination folder layout" />
                     </Grid>
                 </Border>
 
                 <Grid x:Name="OperationsPanel" Grid.Column="1" Grid.Row="0" RowSpacing="18">
+                    <!-- The activity row takes the spare height of a tall window so the erase bar
+                         stays on the bottom edge, but the log inside it is capped: stretched to
+                         half of a maximised window it was one line of text in a very large empty
+                         box. Past the cap the room falls below the log instead. -->
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="ActivityRow" Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <InfoBar x:Name="StatusInfoBar" IsOpen="False" IsClosable="True" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" AutomationProperties.LiveSetting="Assertive" />
 
-                    <Grid Grid.Row="1" ColumnSpacing="26">
+                    <!-- The action column moves below the headline in code once the two side by
+                         side would leave the headline narrower than the words in it. MaxWidth keeps
+                         the button next to the sentence it acts on: the headline stops wrapping at
+                         640px, and on a maximised window the two ended up 700px apart. The width
+                         itself is set in code, so the button holds one position as the headline
+                         changes length rather than sliding about with it. -->
+                    <Grid x:Name="HeroGrid" Grid.Row="1" ColumnSpacing="26" HorizontalAlignment="Left">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="226" />
+                            <ColumnDefinition x:Name="HeroActionColumn" Width="226" />
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         <StackPanel Spacing="12">
                             <TextBlock Text="VERIFIED CAMERA INGEST" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" />
                             <TextBlock x:Name="HeroTitleText" Text="Ready for your next card." FontSize="36" LineHeight="42" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left" AutomationProperties.HeadingLevel="Level1" />
                             <TextBlock x:Name="HeroSubtitleText" Text="JPEGs, RAWs, and video are sorted automatically. Every file is SHA-256 verified before erase is available." FontSize="15" LineHeight="22" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxWidth="670" HorizontalAlignment="Left" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
+                        <StackPanel x:Name="HeroActionPanel" Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
                             <Button x:Name="TransferButton" Content="Scan for media" Style="{StaticResource PrimaryTransferButtonStyle}" HorizontalAlignment="Stretch" Height="48" ToolTipService.ToolTip="Copy, sort, and SHA-256 verify media" AutomationProperties.Name="Transfer and verify media" />
                             <Button x:Name="CancelButton" Content="Cancel transfer" HorizontalAlignment="Stretch" Height="44" Visibility="Collapsed" AutomationProperties.Name="Cancel transfer" />
                         </StackPanel>
@@ -319,7 +372,7 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel x:Name="ActivitySection" Grid.Row="3" Spacing="9">
+                    <StackPanel x:Name="ActivitySection" Grid.Row="3" Spacing="9" VerticalAlignment="Top">
                         <TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" />
                         <!-- Bordered: this is the region that absorbs the spare height of a tall
                              window, and unbordered it read as a hole in the layout rather than as
@@ -336,11 +389,15 @@
                     </StackPanel>
 
                     <Border Grid.Row="4" Background="{ThemeResource DangerSurfaceBrush}" BorderBrush="{ThemeResource SpeedRedBrush}" BorderThickness="1" CornerRadius="10" Padding="21" AutomationProperties.Name="Erase card controls">
-                        <Grid ColumnSpacing="22">
+                        <Grid x:Name="EraseGrid" ColumnSpacing="22">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="236" />
+                                <ColumnDefinition x:Name="EraseActionColumn" Width="236" />
                             </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <StackPanel Spacing="6">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="ERASE CARD CONTENTS" Style="{StaticResource SectionLabelStyle}" Foreground="{ThemeResource SpeedRedBrush}" />
