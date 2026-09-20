@@ -47,6 +47,18 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertEqual(MediaClassifier.classify(video), .video)
         XCTAssertNil(MediaClassifier.classify(sidecar))
 
+        for name in ["IMG.CR3", "IMG.CR2", "DSC.NEF", "DSCF.RAF", "P.ORF", "P.RW2", "X.PEF", "X.X3F"] {
+            XCTAssertEqual(
+                MediaClassifier.classify(URL(fileURLWithPath: name)),
+                .raw,
+                "\(name) is recognised as RAW"
+            )
+        }
+        XCTAssertEqual(MediaClassifier.classify(URL(fileURLWithPath: "A001.BRAW")), .video)
+        XCTAssertTrue(MediaClassifier.isDisposableCameraArtifact(URL(fileURLWithPath: "INDEX.XML")))
+        XCTAssertTrue(MediaClassifier.isDisposableCameraArtifact(URL(fileURLWithPath: "GOPR0001.THM")))
+        XCTAssertFalse(MediaClassifier.isDisposableCameraArtifact(URL(fileURLWithPath: "NOTES.PDF")))
+
         let items = try MediaClassifier.scan(cardRoot)
         XCTAssertEqual(items.count, 3)
         XCTAssertEqual(Set(items.map(\.kind)), Set([.jpeg, .raw, .video]))
@@ -69,6 +81,25 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertFalse(tracker.observe(selectedRoot: cardRoot, activeRoots: [cardRoot]))
         XCTAssertFalse(tracker.observe(selectedRoot: nil, activeRoots: []))
         XCTAssertTrue(tracker.observe(selectedRoot: cardRoot, activeRoots: [cardRoot]))
+
+        // A card inserted next to one already connected is still an arrival once it is the
+        // selected card, even though another card held the selection when it was mounted.
+        let secondCardRoot = testRoot.appendingPathComponent("SECOND-CARD", isDirectory: true)
+        var alongside = CardPresenceTracker()
+        XCTAssertFalse(alongside.observe(selectedRoot: cardRoot, activeRoots: [cardRoot]))
+        XCTAssertFalse(alongside.observe(selectedRoot: cardRoot, activeRoots: [cardRoot, secondCardRoot]))
+        XCTAssertTrue(
+            alongside.observe(selectedRoot: secondCardRoot, activeRoots: [cardRoot, secondCardRoot]),
+            "A card mounted while another was selected is an arrival when it becomes selected"
+        )
+
+        // Everything mounted at the first scan is the baseline, selected or not.
+        var atStartup = CardPresenceTracker()
+        XCTAssertFalse(atStartup.observe(selectedRoot: cardRoot, activeRoots: [cardRoot, secondCardRoot]))
+        XCTAssertFalse(
+            atStartup.observe(selectedRoot: secondCardRoot, activeRoots: [secondCardRoot]),
+            "A second card present at startup is not an arrival when it becomes selected"
+        )
     }
 
     func testVerifiedTransferDuplicatesCollisionsAndSafeErase() async throws {
@@ -119,6 +150,12 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: destinationRoot.appendingPathComponent("Videos/C0001.MP4").path
         ))
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: destinationRoot.appendingPathComponent("Photos/Other").path
+            ),
+            "No folder is created for a category the card has no files in"
+        )
         XCTAssertFalse(FileManager.default.fileExists(atPath: ownedPartial.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: unrelatedPartial.path))
 
@@ -151,6 +188,30 @@ final class MediaShuttleCoreTests: XCTestCase {
                 return XCTFail("Unexpected safety error: \(error)")
             }
         }
+
+        // A format the classifier does not know is never copied, so erase has nothing to verify it
+        // against and must refuse the whole card rather than delete it.
+        let unknownFormat = cardRoot.appendingPathComponent("DCIM/100MSDCF/CLIP0001.XYZ")
+        try write("an unrecognised camera format", to: unknownFormat)
+        XCTAssertEqual(try MediaClassifier.unverifiableFiles(at: cardRoot).count, 1)
+        do {
+            _ = try await wipe.wipe(card: card, session: collision.session)
+            XCTFail("Erase should be blocked by content no transfer could have copied")
+        } catch let error as MediaShuttleError {
+            guard case .eraseBlocked = error else {
+                return XCTFail("Unexpected safety error: \(error)")
+            }
+        }
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: unknownFormat.path),
+            "A blocked erase leaves unrecognised content untouched"
+        )
+        try FileManager.default.removeItem(at: unknownFormat)
+        XCTAssertEqual(
+            try MediaClassifier.unverifiableFiles(at: cardRoot).count,
+            0,
+            "Camera housekeeping alone does not block erase"
+        )
 
         let finalTransfer = try await transfer.transfer(
             card: card,

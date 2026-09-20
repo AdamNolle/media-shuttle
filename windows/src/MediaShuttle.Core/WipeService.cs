@@ -55,15 +55,21 @@ public sealed class WipeService
                 throw new InvalidOperationException(
                     $"Erase blocked: {item.FileName} was not part of the verified transfer. Transfer the card again first.");
             }
+            // Each of these says what to do about it. "The destination copy changed size" on its own
+            // leaves erase locked with nothing the card's owner can act on, and the answer is the
+            // same every time: transfer again, which re-verifies the file and records it afresh.
             if (!File.Exists(record.DestinationPath))
             {
                 throw new FileNotFoundException(
-                    $"Erase blocked: the destination copy of {item.FileName} is missing.",
+                    $"Erase blocked: the destination copy of {item.FileName} is missing. " +
+                    "Transfer this card again to restore it, then erase.",
                     record.DestinationPath);
             }
             if (new FileInfo(record.DestinationPath).Length != record.Size)
             {
-                throw new IOException($"Erase blocked: the destination copy of {item.FileName} changed size.");
+                throw new IOException(
+                    $"Erase blocked: the destination copy of {item.FileName} is no longer the size it was verified at. " +
+                    "Transfer this card again to re-verify it, then erase.");
             }
 
             string destinationFolder = PathUtilities.RelativeDestinationFolder(session.DestinationRoot, record.DestinationPath);
@@ -81,7 +87,9 @@ public sealed class WipeService
             if (!sourceHash.Equals(record.Sha256, StringComparison.OrdinalIgnoreCase) ||
                 !destinationHash.Equals(record.Sha256, StringComparison.OrdinalIgnoreCase))
             {
-                throw new IOException($"Erase blocked: {item.FileName} no longer matches its verified copy.");
+                throw new IOException(
+                    $"Erase blocked: {item.FileName} no longer matches its verified copy. " +
+                    "Transfer this card again to re-verify it, then erase.");
             }
 
             processedBytes += item.Size;
@@ -104,13 +112,16 @@ public sealed class WipeService
                 continue;
             }
 
+            // Deletion has no byte total to measure against, so progress is counted in entries and
+            // the byte figures are left at zero. Reporting the entry count as a byte count made the
+            // processed and throughput readouts show "12 B" and "0 MB/s avg" during an erase.
             progress?.Report(new OperationProgress(
                 OperationPhase.Erasing,
                 Path.GetFileName(Path.TrimEndingDirectorySeparator(entry)),
                 completedEntries,
-                totalUserEntries,
-                completedEntries,
-                Math.Max(1, totalUserEntries)));
+                Math.Max(1, totalUserEntries),
+                0,
+                0));
             try
             {
                 deletedFiles += DeleteEntry(entry, root, cancellationToken);
@@ -146,10 +157,10 @@ public sealed class WipeService
         progress?.Report(new OperationProgress(
             OperationPhase.Complete,
             "Card contents erased",
-            totalUserEntries,
-            totalUserEntries,
-            totalUserEntries,
-            Math.Max(1, totalUserEntries)));
+            Math.Max(1, totalUserEntries),
+            Math.Max(1, totalUserEntries),
+            0,
+            0));
         return new WipeResult(deletedFiles, protectedEntries);
     }
 

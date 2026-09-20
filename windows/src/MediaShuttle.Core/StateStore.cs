@@ -59,8 +59,12 @@ public sealed class StateStore
         CardInfo card,
         CancellationToken cancellationToken = default)
     {
-        foreach (string path in Directory.EnumerateFiles(SessionsPath, "*.json")
-                     .OrderByDescending(File.GetLastWriteTimeUtc))
+        // The write time comes back with the directory entry, so ordering by it costs nothing
+        // beyond the walk itself; asking the filesystem for it per path afterwards does not.
+        foreach (string path in new DirectoryInfo(SessionsPath)
+                     .GetFiles("*.json")
+                     .OrderByDescending(file => file.LastWriteTimeUtc)
+                     .Select(file => file.FullName))
         {
             cancellationToken.ThrowIfCancellationRequested();
             try

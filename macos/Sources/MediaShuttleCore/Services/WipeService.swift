@@ -22,7 +22,21 @@ public actor WipeService {
             throw MediaShuttleError.cardChanged
         }
 
-        let currentMedia = try MediaClassifier.scan(root)
+        // A transfer only copies files the classifier recognises as camera media, so any other user
+        // content on the card has no destination copy to verify against. Deleting it anyway would
+        // lose it permanently, so fail closed: the card must hold nothing but recognised media and
+        // camera/OS housekeeping before erase will touch it.
+        let scan = try MediaClassifier.scanCard(root)
+        guard scan.unverifiableFiles.isEmpty else {
+            let names = scan.unverifiableFiles.prefix(5).map(\.lastPathComponent).joined(separator: ", ")
+            throw MediaShuttleError.eraseBlocked(
+                "\(scan.unverifiableFiles.count) file(s) on this card are not recognised camera media, "
+                + "so no verified copy exists for them: \(names). "
+                + "Copy them off the card yourself before erasing."
+            )
+        }
+
+        let currentMedia = scan.media
         guard session.isEligibleForErase(card: card, media: currentMedia) else {
             throw MediaShuttleError.eraseBlocked(
                 "the card contents or destination copies changed after the verified transfer. Transfer again first."
@@ -43,11 +57,20 @@ public actor WipeService {
                     "\(item.fileName) was not part of the verified transfer. Transfer the card again first."
                 )
             }
+            // Each of these says what to do about it. "The destination copy changed size" on its own
+            // leaves erase locked with nothing the card's owner can act on, and the answer is the
+            // same every time: transfer again, which re-verifies the file and records it afresh.
             guard FileManager.default.fileExists(atPath: record.destinationURL.path) else {
-                throw MediaShuttleError.eraseBlocked("the destination copy of \(item.fileName) is missing.")
+                throw MediaShuttleError.eraseBlocked(
+                    "the destination copy of \(item.fileName) is missing. "
+                    + "Transfer this card again to restore it, then erase."
+                )
             }
             guard fileSize(at: record.destinationURL) == record.size else {
-                throw MediaShuttleError.eraseBlocked("the destination copy of \(item.fileName) changed size.")
+                throw MediaShuttleError.eraseBlocked(
+                    "the destination copy of \(item.fileName) is no longer the size it was verified at. "
+                    + "Transfer this card again to re-verify it, then erase."
+                )
             }
 
             let folder = relativeDestinationFolder(for: record, session: session)
@@ -66,7 +89,10 @@ public actor WipeService {
             let destinationHash = try await FileHasher.sha256(at: record.destinationURL)
             guard sourceHash.caseInsensitiveCompare(record.sha256) == .orderedSame,
                   destinationHash.caseInsensitiveCompare(record.sha256) == .orderedSame else {
-                throw MediaShuttleError.eraseBlocked("\(item.fileName) no longer matches its verified copy.")
+                throw MediaShuttleError.eraseBlocked(
+                    "\(item.fileName) no longer matches its verified copy. "
+                    + "Transfer this card again to re-verify it, then erase."
+                )
             }
             verifiedFiles += 1
             processedBytes += item.size
@@ -83,13 +109,16 @@ public actor WipeService {
         var failures: [String] = []
 
         for (index, entry) in userEntries.enumerated() {
+            // Deletion has no byte total to measure against, so progress is counted in entries and
+            // the byte figures are left at zero. Reporting the entry count as a byte count made the
+            // processed and throughput readouts show "12 B of 12 B" at "0 B/s avg" during an erase.
             await progress?(OperationProgress(
                 phase: .erasing,
                 currentItem: entry.lastPathComponent,
                 completedFiles: index,
                 totalFiles: max(1, userEntries.count),
-                processedBytes: Int64(index),
-                totalBytes: Int64(max(1, userEntries.count))
+                processedBytes: 0,
+                totalBytes: 0
             ))
             do {
                 deletedFiles += try deleteEntry(entry, within: root)
@@ -120,10 +149,10 @@ public actor WipeService {
         await progress?(OperationProgress(
             phase: .complete,
             currentItem: "Card contents erased",
-            completedFiles: userEntries.count,
+            completedFiles: max(1, userEntries.count),
             totalFiles: max(1, userEntries.count),
-            processedBytes: Int64(max(1, userEntries.count)),
-            totalBytes: Int64(max(1, userEntries.count))
+            processedBytes: 0,
+            totalBytes: 0
         ))
         return WipeResult(
             deletedFiles: deletedFiles,

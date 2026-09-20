@@ -133,7 +133,9 @@ internal static class Program
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "JPEGs", "DSC00001.JPG")), "JPEG destination");
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "RAWs", "DSC00001.ARW")), "RAW destination");
         Assert(File.Exists(Path.Combine(destinationRoot, "Videos", "C0001.MP4")), "Video destination");
-        Assert(Directory.Exists(Path.Combine(destinationRoot, "Photos", "Other")), "Other-photo destination exists");
+        Assert(
+            !Directory.Exists(Path.Combine(destinationRoot, "Photos", "Other")),
+            "No folder is created for a category the card has no files in");
         Assert(!File.Exists(stalePartial), "Stale Media Shuttle partial is cleaned up");
         Assert(File.Exists(unrelatedPartial), "Unrelated partial-like filename is preserved");
 
@@ -145,6 +147,20 @@ internal static class Program
         TransferResult collision = await transfer.TransferAsync(card, destinationRoot, false, null, CancellationToken.None);
         Assert(collision.Session.CopiedCount == 1, "Changed same-name file is copied");
         Assert(File.Exists(Path.Combine(destinationRoot, "Photos", "JPEGs", "DSC00001 (2).JPG")), "Collision uses numbered filename");
+
+        // The same rule the other way round: a category the card does hold is still created.
+        string otherCardRoot = Path.Combine(testRoot, "OTHER-CARD");
+        string otherDestination = Path.Combine(testRoot, "Camera-Other");
+        Directory.CreateDirectory(Path.Combine(otherCardRoot, "DCIM", "100MSDCF"));
+        await File.WriteAllTextAsync(Path.Combine(otherCardRoot, "DCIM", "100MSDCF", "DSC00002.HEIC"), "heic-one");
+        var otherCard = new CardInfo(otherCardRoot, "OTHER CARD", 0, 64L * 1024 * 1024, 48L * 1024 * 1024, "Removable");
+        await transfer.TransferAsync(otherCard, otherDestination, false, null, CancellationToken.None);
+        Assert(
+            File.Exists(Path.Combine(otherDestination, "Photos", "Other", "DSC00002.HEIC")),
+            "A card holding other-format photos still gets the Other folder");
+        Assert(
+            !Directory.Exists(Path.Combine(otherDestination, "Videos")),
+            "A card holding no video leaves no empty Videos folder");
 
         string unverified = Path.Combine(cardRoot, "DCIM", "100MSDCF", "DSC99999.JPG");
         await File.WriteAllTextAsync(unverified, "not transferred");

@@ -28,7 +28,6 @@ public actor TransferService {
             destinationRoot.resolvingSymlinksInPath(),
             cardRoot: card.rootURL.resolvingSymlinksInPath()
         )
-        try ensureDestinationFolders(at: destinationRoot)
         cleanupPartials(at: destinationRoot)
 
         await progress?(OperationProgress(
@@ -45,6 +44,7 @@ public actor TransferService {
 
         let totalBytes = media.reduce(Int64(0)) { $0 + $1.size }
         try ensureFreeSpace(at: destinationRoot, requiredBytes: totalBytes)
+        try ensureDestinationFolders(for: media, at: destinationRoot)
         var session = TransferSession(
             card: card,
             destinationRoot: destinationRoot,
@@ -273,8 +273,11 @@ public actor TransferService {
         )
     }
 
-    private func ensureDestinationFolders(at root: URL) throws {
-        for kind in MediaKind.allCases {
+    /// Creates a category folder only for the kinds this card actually holds. Creating all four up
+    /// front left an empty Photos/Other next to every transfer of a card with no other-format
+    /// photos, which reads as a category that failed rather than one that was never needed.
+    private func ensureDestinationFolders(for media: [MediaItem], at root: URL) throws {
+        for kind in Set(media.map(\.kind)) {
             try FileManager.default.createDirectory(
                 at: MediaClassifier.destinationFolder(for: kind, under: root),
                 withIntermediateDirectories: true

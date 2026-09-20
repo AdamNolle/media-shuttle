@@ -129,18 +129,17 @@ public static class MediaClassifier
     {
         var media = new List<MediaItem>();
         var unverifiable = new List<string>();
-        foreach (string filePath in EnumerateCardFiles(rootPath))
+        foreach (FileInfo file in EnumerateCardFiles(rootPath))
         {
-            if (!TryClassify(filePath, out MediaKind kind))
+            if (!TryClassify(file.Name, out MediaKind kind))
             {
-                if (!IsDisposableCameraArtifact(filePath))
+                if (!IsDisposableCameraArtifact(file.Name))
                 {
-                    unverifiable.Add(filePath);
+                    unverifiable.Add(file.FullName);
                 }
                 continue;
             }
 
-            var file = new FileInfo(filePath);
             media.Add(new MediaItem(
                 file.FullName,
                 file.Name,
@@ -166,20 +165,36 @@ public static class MediaClassifier
         return DisposableExtensions.Contains(Path.GetExtension(fileName));
     }
 
-    private static IEnumerable<string> EnumerateCardFiles(string rootPath)
+    // Cameras mark their databases hidden or system and erase has to account for every one of
+    // them, so nothing is skipped by attribute — the default options would skip both.
+    private static readonly EnumerationOptions CardEnumerationOptions = new()
     {
-        var pending = new Stack<string>();
-        pending.Push(Path.GetFullPath(rootPath));
+        AttributesToSkip = 0,
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = false,
+        ReturnSpecialDirectories = false
+    };
+
+    /// <summary>
+    /// Yields FileInfo rather than paths because the size and timestamp come back with the
+    /// directory entry itself. Constructing a FileInfo per path afterwards costs another metadata
+    /// round trip per file, which on a full card is tens of thousands of them — and the UI rescans
+    /// whenever the card changes.
+    /// </summary>
+    private static IEnumerable<FileInfo> EnumerateCardFiles(string rootPath)
+    {
+        var pending = new Stack<DirectoryInfo>();
+        pending.Push(new DirectoryInfo(Path.GetFullPath(rootPath)));
 
         while (pending.Count > 0)
         {
-            string directory = pending.Pop();
-            string[] files;
-            string[] directories;
+            DirectoryInfo directory = pending.Pop();
+            FileInfo[] files;
+            DirectoryInfo[] directories;
             try
             {
-                files = Directory.GetFiles(directory);
-                directories = Directory.GetDirectories(directory);
+                files = directory.GetFiles("*", CardEnumerationOptions);
+                directories = directory.GetDirectories("*", CardEnumerationOptions);
             }
             catch (UnauthorizedAccessException)
             {
@@ -190,14 +205,14 @@ public static class MediaClassifier
                 continue;
             }
 
-            foreach (string filePath in files)
+            foreach (FileInfo file in files)
             {
-                yield return filePath;
+                yield return file;
             }
 
-            foreach (string child in directories)
+            foreach (DirectoryInfo child in directories)
             {
-                if (ScanExcludedDirectories.Contains(Path.GetFileName(child)) || IsReparsePoint(child))
+                if (ScanExcludedDirectories.Contains(child.Name) || IsReparsePoint(child))
                 {
                     continue;
                 }
@@ -206,11 +221,11 @@ public static class MediaClassifier
         }
     }
 
-    private static bool IsReparsePoint(string path)
+    private static bool IsReparsePoint(DirectoryInfo directory)
     {
         try
         {
-            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+            return (directory.Attributes & FileAttributes.ReparsePoint) != 0;
         }
         catch (IOException)
         {

@@ -24,7 +24,6 @@ public sealed class TransferService
     {
         destinationRoot = Path.GetFullPath(destinationRoot);
         Directory.CreateDirectory(destinationRoot);
-        EnsureDestinationFolders(destinationRoot);
         CleanupPartials(destinationRoot);
 
         progress?.Report(new OperationProgress(OperationPhase.Scanning, "Scanning card", 0, 0, 0, 0));
@@ -39,6 +38,7 @@ public sealed class TransferService
 
         long totalBytes = media.Sum(item => item.Size);
         EnsureFreeSpace(destinationRoot, totalBytes);
+        EnsureDestinationFolders(destinationRoot, media);
 
         var session = new TransferSession
         {
@@ -181,6 +181,7 @@ public sealed class TransferService
         CancellationToken cancellationToken)
     {
         string temporaryPath = destinationPath + PartialMarker + Guid.NewGuid().ToString("N");
+        long copiedBytes = 0;
         try
         {
             await _logger.WriteAsync($"Copying {item.FileName}", cancellationToken);
@@ -204,6 +205,7 @@ public sealed class TransferService
                 int read;
                 while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
                 {
+                    copiedBytes += read;
                     sourceHasher.AppendData(buffer, 0, read);
                     await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                     long next = getProcessedBytes() + read;
@@ -221,6 +223,17 @@ public sealed class TransferService
                         MediaClassifier.DestinationFolder(item.Kind)));
                 }
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            // Both hashes are taken from the bytes that were actually copied, so a file the camera
+            // was still writing when the scan sized it passes verification and is then recorded
+            // against the stale size. Erase compares the destination against that recorded size and
+            // refuses the card — permanently, and with no explanation the card can act on. Catch the
+            // change here instead, while re-scanning and transferring again still fixes it.
+            if (copiedBytes != item.Size)
+            {
+                throw new IOException(
+                    $"{item.FileName} changed while it was being copied. Re-scan the card and transfer again.");
             }
 
             string sourceHash = Convert.ToHexString(sourceHasher.GetHashAndReset());
@@ -269,26 +282,30 @@ public sealed class TransferService
         }
     }
 
-    private static void EnsureDestinationFolders(string destinationRoot)
+    /// <summary>
+    /// Creates a category folder only for the kinds this card actually holds. Creating all four up
+    /// front left an empty Photos\Other next to every transfer of a card with no other-format
+    /// photos, which reads as a category that failed rather than one that was never needed.
+    /// </summary>
+    private static void EnsureDestinationFolders(string destinationRoot, IReadOnlyList<MediaItem> media)
     {
-        foreach (string path in new[]
-                 {
-                     Path.Combine(destinationRoot, "Photos", "JPEGs"),
-                     Path.Combine(destinationRoot, "Photos", "RAWs"),
-            Path.Combine(destinationRoot, "Photos", "Other"),
-                     Path.Combine(destinationRoot, "Videos")
-                 })
+        foreach (MediaKind kind in media.Select(item => item.Kind).Distinct())
         {
-            Directory.CreateDirectory(path);
+            Directory.CreateDirectory(Path.Combine(destinationRoot, MediaClassifier.DestinationFolder(kind)));
         }
     }
 
     private static void CleanupPartials(string destinationRoot)
     {
-        foreach (string partial in Directory.EnumerateFiles(
-                     destinationRoot,
-                     $"*{PartialMarker}*",
-                     SearchOption.AllDirectories))
+        // IgnoreInaccessible: a single unreadable folder anywhere under the destination otherwise
+        // throws out of the enumeration itself and fails the whole transfer before it starts.
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true,
+            AttributesToSkip = 0
+        };
+        foreach (string partial in Directory.EnumerateFiles(destinationRoot, $"*{PartialMarker}*", options))
         {
             if (!IsOwnedPartial(partial))
             {
@@ -335,12 +352,18 @@ public sealed class TransferService
         return true;
     }
 
+    // DriveInfo answers for drive letters only: it rejects a UNC share and reports the host volume
+    // rather than the mounted one for a directory mount point, so a network or mounted destination
+    // failed the check with "Object must be a root directory" instead of being measured.
     private static void EnsureFreeSpace(string destinationRoot, long totalBytes)
     {
-        string root = Path.GetPathRoot(destinationRoot) ?? throw new IOException("Destination drive was not found.");
-        var drive = new DriveInfo(root);
-        const long reserve = 1024L * 1024L * 1024L;
-        if (drive.AvailableFreeSpace < totalBytes + reserve)
+        if (!NativeMethods.GetDiskFreeSpaceEx(destinationRoot, out ulong availableBytes, out _, out _))
+        {
+            throw new IOException("The free space on the destination drive could not be read.");
+        }
+
+        const ulong reserve = 1024UL * 1024UL * 1024UL;
+        if (availableBytes < (ulong)Math.Max(0, totalBytes) + reserve)
         {
             throw new IOException("Not enough free space. Keep at least the card size plus 1 GB available.");
         }

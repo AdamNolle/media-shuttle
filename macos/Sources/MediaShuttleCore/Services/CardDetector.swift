@@ -59,12 +59,21 @@ public struct CardPresenceTracker: Sendable {
 
     public mutating func observe(selectedRoot: URL?, activeRoots: [URL]) -> Bool {
         let active = Set(activeRoots.map { $0.standardizedFileURL.path })
-        defer {
-            seenRoots.formIntersection(active)
+        seenRoots.formIntersection(active)
+
+        // Everything mounted at the first scan is the baseline: cards already in the reader when
+        // the app launched are not arrivals, and must not start an automatic transfer.
+        guard baselineEstablished else {
             seenRoots.formUnion(active)
             baselineEstablished = true
+            return false
         }
-        guard baselineEstablished, let selectedRoot else { return false }
-        return !seenRoots.contains(selectedRoot.standardizedFileURL.path)
+
+        // Only the selected card is marked seen. Marking every mounted volume seen on every scan
+        // meant a card inserted next to one already connected was recorded as seen while another
+        // card held the selection, so it was never announced — no activity entry and, with
+        // automatic transfer on, no transfer — even once the first card was removed.
+        guard let selectedRoot else { return false }
+        return seenRoots.insert(selectedRoot.standardizedFileURL.path).inserted
     }
 }

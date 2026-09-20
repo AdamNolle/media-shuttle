@@ -78,6 +78,16 @@ public struct MediaItem: Codable, Hashable, Sendable {
     }
 }
 
+public struct CardScan: Sendable {
+    public let media: [MediaItem]
+    public let unverifiableFiles: [URL]
+
+    public init(media: [MediaItem], unverifiableFiles: [URL]) {
+        self.media = media
+        self.unverifiableFiles = unverifiableFiles
+    }
+}
+
 public struct CardInfo: Codable, Hashable, Identifiable, Sendable {
     public let rootURL: URL
     public let volumeLabel: String
