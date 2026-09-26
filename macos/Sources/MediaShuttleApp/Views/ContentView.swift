@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: AppModel
+    @Environment(\.openWindow) private var openWindow
     @State private var showingEraseConfirmation = false
     @State private var eraseTarget: AppModel.EraseTarget?
 
@@ -31,6 +32,9 @@ struct ContentView: View {
         // row as the traffic lights instead of in a band beneath them.
         .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 940, minHeight: 470)
+        .onAppear {
+            AppDelegate.openMainWindow = { openWindow(id: "main") }
+        }
         .sheet(isPresented: $showingEraseConfirmation) {
             EraseConfirmationView(model: model) {
                 showingEraseConfirmation = false

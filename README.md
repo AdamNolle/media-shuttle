@@ -145,6 +145,7 @@ matching `SHA256SUMS-macos.txt` or `SHA256SUMS-windows.txt`.
 2. Open it and drag **Media Shuttle.app** into **Applications**.
 3. Open the app, choose a destination, connect a card.
 
+The macOS DMG published with **v0.0.2** is Developer ID signed and notarized by Apple. Open it normally.
 Community builds are ad-hoc signed unless a maintainer supplies a Developer ID certificate. For an
 ad-hoc build, Control-click the app, choose **Open**, and confirm once.
 

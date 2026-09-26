@@ -229,6 +229,45 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertNil(latestSession)
     }
 
+    func testEraseRefusesOrdinaryFilesAndNestedExcludedFolders() async throws {
+        let jpeg = cardRoot.appendingPathComponent("DCIM/100MSDCF/DSC00001.JPG")
+        try write("jpeg", to: jpeg)
+        let store = try StateStore(rootURL: stateRoot)
+        let logger = try AppLogger(stateRoot: stateRoot)
+        let transfer = TransferService(stateStore: store, logger: logger)
+        let wipe = WipeService(stateStore: store, logger: logger)
+        let card = CardInfo(
+            rootURL: cardRoot, volumeLabel: "TEST CARD", volumeID: "test-volume",
+            totalBytes: 64 * 1_024 * 1_024, freeBytes: 32 * 1_024 * 1_024,
+            driveType: "Removable media"
+        )
+        let result = try await transfer.transfer(
+            card: card, destinationRoot: destinationRoot, groupByDate: false
+        )
+        let paths = [
+            "notes.txt", "PRIVATE/settings.dat", "PRIVATE/backup.bin", "DCIM/library.db",
+            "project.ini", "package.inf", "notes.log",
+            "DCIM/.Trashes/notes.xyz", "DCIM/Archive.bundle/Contents/notes.xyz"
+        ]
+        for path in paths {
+            let unverified = cardRoot.appendingPathComponent(path)
+            try write("user content without a destination copy", to: unverified)
+            XCTAssertEqual(try MediaClassifier.unverifiableFiles(at: cardRoot), [unverified], path)
+            do {
+                _ = try await wipe.wipe(card: card, session: result.session)
+                XCTFail("Erase must refuse unverified content: \(path)")
+                return
+            } catch let error as MediaShuttleError {
+                guard case .eraseBlocked = error else {
+                    return XCTFail("Unexpected safety error: \(error)")
+                }
+            }
+            XCTAssertTrue(FileManager.default.fileExists(atPath: jpeg.path))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: unverified.path))
+            try FileManager.default.removeItem(at: unverified)
+        }
+    }
+
     func testEraseEligibilityLocksWhenSourceOrDestinationChanges() async throws {
         let jpeg = cardRoot.appendingPathComponent("DCIM/100MSDCF/DSC00001.JPG")
         try write("jpeg", to: jpeg)

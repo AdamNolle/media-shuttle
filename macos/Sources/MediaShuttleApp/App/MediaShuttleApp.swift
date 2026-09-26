@@ -3,6 +3,8 @@ import Carbon
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    @MainActor static var openMainWindow: (() -> Void)?
+
     /// True when macOS started the app at login — Login Items, which `SMAppService.mainApp`
     /// registers — rather than someone opening it. `--background` forces the same path so it can
     /// be exercised without logging out.
@@ -15,6 +17,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let background = launchedInBackground
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleReopen(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kCoreEventClass),
+            andEventID: AEEventID(kAEReopenApplication)
+        )
 
         // Starting at login used to raise the window and take the foreground, in front of whatever
         // the reader had opened. A launch nobody asked for stays out of the way: no Dock icon, no
@@ -50,11 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            AppDelegate.presentMainWindow()
+    // A closed SwiftUI window is removed from NSApp.windows. Raising a window that no longer
+    // exists cannot reopen it, and the delegate adaptor does not reliably forward reopen events.
+    // Handle the launch-services event directly and let SwiftUI recreate the scene when needed.
+    @MainActor @objc private func handleReopen(
+        _ event: NSAppleEventDescriptor,
+        withReplyEvent reply: NSAppleEventDescriptor
+    ) {
+        if !NSApp.windows.contains(where: { $0.canBecomeMain && $0.title == "Media Shuttle" }) {
+            Self.openMainWindow?()
         }
-        return true
+        Self.presentMainWindow()
     }
 
     /// Brings the app forward from a background launch. The activation policy is raised first:

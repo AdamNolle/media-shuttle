@@ -49,10 +49,12 @@ public enum MediaClassifier {
 
     // Housekeeping a camera or an operating system writes for itself. Erase may remove these
     // without a verified destination copy; everything else on the card blocks erase instead.
+    // Generic text, binary, database and settings extensions do not establish camera ownership.
+    // They must block erase even when they are stored inside a camera directory.
     private static let disposableExtensions: Set<String> = [
         "thm", "ctg", "cpi", "mpl", "bdm", "bdmv", "clpi", "mpls",
         "inp", "ind", "int", "tdt", "tid", "modd", "moff", "bnp", "pmp",
-        "xml", "xmp", "dat", "bin", "db", "ini", "inf", "log", "txt",
+        "xml", "xmp",
         "sec", "info", "mdt", "osd", "mtd", "pck", "fpr", "set", "sav",
         "idx", "map", "tmp", "bup", "ifo"
     ]
@@ -107,7 +109,7 @@ public enum MediaClassifier {
         guard let enumerator = FileManager.default.enumerator(
             at: rootURL,
             includingPropertiesForKeys: keys,
-            options: [.skipsPackageDescendants],
+            options: [],
             errorHandler: { _, error in
                 traversalError = error
                 return false
@@ -134,7 +136,8 @@ public enum MediaClassifier {
             }
 
             if values.isDirectory == true {
-                if systemManagedRootNames.contains(url.lastPathComponent.lowercased()) {
+                if url.deletingLastPathComponent().standardizedFileURL == rootURL.standardizedFileURL,
+                   isSystemManagedRootEntry(url) {
                     enumerator.skipDescendants()
                 }
                 continue
