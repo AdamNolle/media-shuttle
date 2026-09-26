@@ -3,6 +3,44 @@ import Foundation
 public enum CardDetector {
     private static let cameraFolders = ["DCIM", "M4ROOT", "PRIVATE"]
 
+    public static func selectedSource(at url: URL) throws -> CardInfo {
+        let root = url.standardizedFileURL.resolvingSymlinksInPath()
+        let keys: Set<URLResourceKey> = [
+            .isDirectoryKey, .volumeURLKey, .volumeNameKey, .volumeUUIDStringKey,
+            .volumeTotalCapacityKey, .volumeAvailableCapacityKey
+        ]
+        let values = try root.resourceValues(forKeys: keys)
+        guard root.path != "/", values.isDirectory == true else {
+            throw MediaShuttleError.unsafePath
+        }
+        let isVolumeRoot = values.volume?.standardizedFileURL.resolvingSymlinksInPath() == root
+        return CardInfo(
+            rootURL: root,
+            volumeLabel: isVolumeRoot ? (values.volumeName ?? root.lastPathComponent) : root.lastPathComponent,
+            volumeID: values.volumeUUIDString ?? root.path,
+            totalBytes: Int64(values.volumeTotalCapacity ?? 0),
+            freeBytes: Int64(values.volumeAvailableCapacity ?? 0),
+            driveType: isVolumeRoot ? "Selected volume" : "Selected folder"
+        )
+    }
+
+    /// A folder can be used for ingest without granting the app a way to erase arbitrary folders
+    /// on the Mac. Manual erase is restricted to external camera volumes, selected at their root.
+    public static func isCameraCardVolume(_ url: URL) -> Bool {
+        let root = url.standardizedFileURL.resolvingSymlinksInPath()
+        guard let values = try? root.resourceValues(forKeys: [.volumeURLKey, .volumeIsInternalKey]),
+              root.path != "/", values.volumeIsInternal == false,
+              values.volume?.standardizedFileURL.resolvingSymlinksInPath() == root else {
+            return false
+        }
+        return cameraFolders.contains {
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(
+                atPath: root.appendingPathComponent($0).path, isDirectory: &isDirectory
+            ) && isDirectory.boolValue
+        }
+    }
+
     public static func candidates(destinationRoot: URL) -> [CardInfo] {
         let keys: [URLResourceKey] = [
             .volumeNameKey, .volumeUUIDStringKey, .volumeTotalCapacityKey,

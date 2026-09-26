@@ -6,13 +6,26 @@ struct SourcePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel("SOURCE")
+            HStack {
+                SectionLabel("SOURCE")
+                Spacer()
+                Button("Choose…", action: model.chooseSource)
+                    .buttonStyle(ShuttleButtonStyle(kind: .secondary))
+                    .disabled(model.isBusy)
+                    .accessibilityLabel("Choose media source")
+            }
             sourceSummary
                 .padding(.top, 10)
+            if model.selectedSourceURL != nil {
+                Button("Use auto-detect", action: model.useAutomaticSource)
+                    .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
+                    .disabled(model.isBusy)
+                    .padding(.top, 8)
+            }
 
             Hairline().padding(.vertical, 12)
 
-            SectionLabel("CARD CONTENTS")
+            SectionLabel("SOURCE CONTENTS")
             MediaBreakdown(counts: model.mediaCounts)
                 .padding(.top, 10)
 
@@ -48,7 +61,7 @@ struct SourcePanel: View {
                 .frame(width: 38, height: 50)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(model.currentCard?.volumeLabel ?? "No card")
+                Text(model.currentCard?.volumeLabel ?? model.selectedSourceURL?.lastPathComponent ?? "No source")
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
@@ -58,11 +71,13 @@ struct SourcePanel: View {
                         .font(Theme.mono(9.5))
                         .foregroundStyle(Theme.textMuted)
                         .lineLimit(2)
-                    Text("\(assetCount.formatted()) assets · \(ByteCountFormatter.shuttleString(model.totalMediaBytes))")
+                    Text("\(assetCount.formatted()) \(assetCount == 1 ? "asset" : "assets") · \(ByteCountFormatter.shuttleString(model.totalMediaBytes))")
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textMuted)
                 } else {
-                    Text("Insert a camera card to begin.")
+                    Text(model.selectedSourceURL == nil
+                         ? "Choose a source or insert a camera card."
+                         : "Selected source is unavailable.")
                         .font(Theme.mono(9.5))
                         .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -85,6 +100,7 @@ struct SourcePanel: View {
             HStack(spacing: 5) {
                 Button("Change", action: model.chooseDestination)
                     .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
+                    .disabled(model.isBusy)
                 Button("Open", action: model.openDestination)
                     .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
                     .disabled(!model.isDestinationAvailable)

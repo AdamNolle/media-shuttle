@@ -43,6 +43,11 @@ from the card, independently hashes the finished destination file, and publishes
 when both digests agree. A changing source, an incomplete scan, an unsafe or missing destination,
 or a hash mismatch stops the operation — it never presents a partial file as complete.
 
+On macOS, **Choose…** in the Source panel opens the system folder picker. Select a mounted
+camera-card volume or any folder containing media; that source stays selected until you choose
+another or click **Use auto-detect**. Folder sources support transfer and verification. Erase is
+available only when a camera-card volume is selected at its root.
+
 Files already at the destination are hashed rather than copied again when their size and content
 match. A name collision with *different* content is kept, as `DSC0001 (2).JPG`.
 

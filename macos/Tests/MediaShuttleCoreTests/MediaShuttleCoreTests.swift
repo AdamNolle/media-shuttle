@@ -64,6 +64,35 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertEqual(Set(items.map(\.kind)), Set([.jpeg, .raw, .video]))
     }
 
+    func testSelectedFolderTransferRequiresNoCameraLayout() async throws {
+        let folder = testRoot.appendingPathComponent("Selected source", isDirectory: true)
+        let jpeg = folder.appendingPathComponent("photo.JPG")
+        try write("selected-folder-photo", to: jpeg)
+        let card = try CardDetector.selectedSource(at: folder)
+        XCTAssertEqual(card.rootURL, folder.resolvingSymlinksInPath())
+        XCTAssertEqual(card.volumeLabel, "Selected source")
+        XCTAssertEqual(card.driveType, "Selected folder")
+        XCTAssertEqual(card.id, try CardDetector.selectedSource(at: folder).id)
+        XCTAssertFalse(CardDetector.isCameraCardVolume(folder), "Selecting a folder must not grant card erase")
+        XCTAssertThrowsError(try CardDetector.selectedSource(at: jpeg))
+        XCTAssertThrowsError(try CardDetector.selectedSource(at: URL(fileURLWithPath: "/")))
+
+        let store = try StateStore(rootURL: stateRoot)
+        let logger = try AppLogger(stateRoot: stateRoot)
+        let transfer = TransferService(stateStore: store, logger: logger)
+        let result = try await transfer.transfer(
+            card: card, destinationRoot: destinationRoot, groupByDate: false
+        )
+        XCTAssertEqual(result.session.totalFiles, 1)
+        XCTAssertEqual(result.session.copiedCount, 1)
+        let copied = try XCTUnwrap(result.session.files.first?.destinationURL)
+        XCTAssertEqual(try Data(contentsOf: copied), try Data(contentsOf: jpeg))
+        let sourceHash = try await FileHasher.sha256(at: jpeg)
+        let destinationHash = try await FileHasher.sha256(at: copied)
+        XCTAssertEqual(sourceHash, destinationHash)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: jpeg.path))
+    }
+
     func testSettingsRoundTripAndCardPresenceBaseline() async throws {
         let store = try StateStore(rootURL: stateRoot)
         var settings = AppSettings()

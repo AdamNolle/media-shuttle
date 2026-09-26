@@ -40,6 +40,8 @@ final class AppModel {
     var settings = AppSettings()
     var destinationURL: URL
     var currentCard: CardInfo?
+    private(set) var selectedSourceURL: URL?
+    private(set) var sourceAllowsErase = true
     var media: [MediaItem] = []
     var unverifiableFileCount = 0
     var verifiedSession: TransferSession?
@@ -117,7 +119,8 @@ final class AppModel {
     /// WipeService refuses a card holding content no transfer could have copied. Reflected here so
     /// erase reads as locked, rather than accepting the typed confirmation and only then refusing.
     var canWipe: Bool {
-        !isBusy && currentCard != nil && verifiedSession?.files.isEmpty == false && unverifiableFileCount == 0
+        !isBusy && sourceAllowsErase && currentCard != nil
+            && verifiedSession?.files.isEmpty == false && unverifiableFileCount == 0
     }
 
     var mediaCounts: [MediaKind: Int] {
@@ -173,11 +176,28 @@ final class AppModel {
     func scanCards(forceUpdate: Bool = false) async {
         guard !isBusy else { return }
         let destination = destinationURL
-        let cards = await Task.detached(priority: .utility) {
-            CardDetector.candidates(destinationRoot: destination)
-        }.value
+        let chosenSource = selectedSourceURL
+        let cards: [CardInfo]
+        do {
+            cards = try await Task.detached(priority: .utility) {
+                if let chosenSource {
+                    return [try CardDetector.selectedSource(at: chosenSource)]
+                }
+                return CardDetector.candidates(destinationRoot: destination)
+            }.value
+        } catch {
+            guard chosenSource == selectedSourceURL, destination == destinationURL, !isBusy else { return }
+            resetSourceState()
+            topStatus = "SOURCE UNAVAILABLE"
+            statusTone = .error
+            if banner?.title != "Source unavailable" {
+                showError("Source unavailable", "Reconnect the selected source or choose another folder. " + error.localizedDescription)
+            }
+            return
+        }
+        guard chosenSource == selectedSourceURL, destination == destinationURL, !isBusy else { return }
         let selected = cards.first
-        let isNew = presenceTracker.observe(
+        let isNew = chosenSource == nil && presenceTracker.observe(
             selectedRoot: selected?.rootURL,
             activeRoots: cards.map(\.rootURL)
         )
@@ -205,24 +225,33 @@ final class AppModel {
         if !forceUpdate, !isNew, previousCardID == card.id, signature == lastScanSignature {
             return
         }
-        lastScanSignature = signature
-
         let scan: CardScan
         do {
             scan = try await Task.detached(priority: .utility) {
                 try MediaClassifier.scanCard(card.rootURL)
             }.value
         } catch {
-            showError("Card scan failed", error.localizedDescription)
+            guard chosenSource == selectedSourceURL, destination == destinationURL, !isBusy else { return }
+            resetSourceState()
+            showError("Source scan failed", error.localizedDescription)
+            topStatus = "SOURCE SCAN FAILED"
+            statusTone = .error
             return
         }
+        guard chosenSource == selectedSourceURL, destination == destinationURL, !isBusy else { return }
         let scanned = scan.media
         let storedSession = await stateStore.latestVerifiedSession(for: card)
+        guard chosenSource == selectedSourceURL, destination == destinationURL, !isBusy else { return }
+        lastScanSignature = signature
         let session = storedSession.flatMap {
             $0.isEligibleForErase(card: card, media: scanned) ? $0 : nil
         }
         let sessionWasInvalidated = verifiedSession != nil && session == nil
         currentCard = card
+        if banner?.title == "Source unavailable" || banner?.title == "Source scan failed" {
+            banner = nil
+        }
+        sourceAllowsErase = chosenSource == nil || CardDetector.isCameraCardVolume(card.rootURL)
         media = scanned
         unverifiableFileCount = scan.unverifiableFiles.count
         verifiedSession = session
@@ -267,8 +296,8 @@ final class AppModel {
         }
         guard let card = currentCard else {
             banner = BannerMessage(
-                title: "No camera card found",
-                message: "Connect a card containing DCIM, M4ROOT, or PRIVATE folders.",
+                title: "No media source found",
+                message: "Choose a source folder or connect a card containing DCIM, M4ROOT, or PRIVATE folders.",
                 tone: .info
             )
             return
@@ -375,6 +404,10 @@ final class AppModel {
     }
 
     func wipeCard(expecting expected: EraseTarget) {
+        guard sourceAllowsErase else {
+            showError("Erase unavailable", "Erase is available only for camera-card volumes, not selected folders.")
+            return
+        }
         guard operationTask == nil else {
             showError(
                 "Operation in progress",
@@ -442,7 +475,61 @@ final class AppModel {
         }
     }
 
+    func chooseSource() {
+        guard !isBusy else { return }
+        let panel = NSOpenPanel()
+        panel.title = "Choose Media Source"
+        panel.message = "Choose a camera-card volume or a folder containing photos and videos."
+        panel.prompt = "Choose source"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = currentCard?.rootURL ?? URL(fileURLWithPath: "/Volumes", isDirectory: true)
+        guard panel.runModal() == .OK, let selected = panel.url else { return }
+        guard !isBusy else { return }
+        do {
+            let source = try CardDetector.selectedSource(at: selected)
+            guard !Self.isSameOrChild(destinationURL.resolvingSymlinksInPath(), of: source.rootURL) else {
+                showError("Unsafe source", "Choose a source that does not contain the destination folder, or change the destination first.")
+                return
+            }
+            selectedSourceURL = source.rootURL
+            sourceAllowsErase = CardDetector.isCameraCardVolume(source.rootURL)
+            resetSourceState()
+            banner = nil
+            topStatus = "SCANNING SOURCE"
+            addActivity("Source selected: \(source.rootURL.path)")
+            Task { await scanCards(forceUpdate: true) }
+        } catch {
+            showError("Source unavailable", error.localizedDescription)
+        }
+    }
+
+    func useAutomaticSource() {
+        guard !isBusy else { return }
+        selectedSourceURL = nil
+        sourceAllowsErase = true
+        presenceTracker = CardPresenceTracker()
+        resetSourceState()
+        banner = nil
+        addActivity("Automatic card detection enabled.")
+        Task { await scanCards(forceUpdate: true) }
+    }
+
+    private func resetSourceState() {
+        currentCard = nil
+        media = []
+        unverifiableFileCount = 0
+        verifiedSession = nil
+        reportURL = nil
+        lastScanSignature = nil
+        operationStartedAt = nil
+        operationEndedAt = nil
+        updateDisconnectedState()
+    }
+
     func chooseDestination() {
+        guard !isBusy else { return }
         let panel = NSOpenPanel()
         panel.title = "Choose Media Destination"
         panel.message = "Photos and videos will be sorted into folders inside this location."
@@ -453,6 +540,7 @@ final class AppModel {
         panel.allowsMultipleSelection = false
         panel.directoryURL = destinationURL
         guard panel.runModal() == .OK, let selected = panel.url else { return }
+        guard !isBusy else { return }
 
         let selectedURL = selected.standardizedFileURL
         if let card = currentCard,
@@ -568,7 +656,8 @@ final class AppModel {
     }
 
     private func updateDetectedState() {
-        topStatus = "\(currentCard?.volumeLabel.uppercased() ?? "MEDIA") CONNECTED"
+        let state = selectedSourceURL == nil ? "CONNECTED" : "READY"
+        topStatus = "\(currentCard?.volumeLabel.uppercased() ?? "MEDIA") \(state)"
         statusTone = .active
         primaryActionTitle = "Transfer and verify"
     }
@@ -591,7 +680,7 @@ final class AppModel {
     }
 
     private func updateEmptyCardState() {
-        topStatus = "CARD EMPTY"
+        topStatus = selectedSourceURL == nil ? "CARD EMPTY" : "SOURCE EMPTY"
         statusTone = .verified
         primaryActionTitle = "No media found"
     }

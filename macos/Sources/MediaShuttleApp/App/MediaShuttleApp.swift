@@ -101,6 +101,10 @@ struct MediaShuttleApp: App {
         .windowResizability(.contentMinSize)
         .commands {
             CommandMenu("Media") {
+                Button("Choose Source…", action: model.chooseSource)
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                    .disabled(model.isBusy)
+
                 Button("Scan for Camera Media") { model.scanNow() }
                     .keyboardShortcut("r", modifiers: [.command])
                     .disabled(model.isBusy)

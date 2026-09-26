@@ -20,6 +20,13 @@ struct MenuBarView: View {
 
         Divider()
 
+        Button("Choose Source…") {
+            openWindow(id: "main")
+            AppDelegate.presentMainWindow()
+            model.chooseSource()
+        }
+        .disabled(model.isBusy)
+
         Button("Transfer and Verify") {
             openWindow(id: "main")
             AppDelegate.presentMainWindow()

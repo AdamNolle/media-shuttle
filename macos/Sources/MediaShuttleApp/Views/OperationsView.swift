@@ -212,6 +212,9 @@ private struct SessionPanel: View {
     private var hasCard: Bool { model.currentCard != nil }
 
     private var currentActivity: String {
+        if model.progress.phase == .idle, model.currentCard != nil {
+            return model.media.isEmpty ? "No supported media found" : "Ready to transfer and verify"
+        }
         guard let source = model.progress.currentSourceURL else { return model.progress.currentItem }
         let folder = model.progress.currentDestinationFolder
         return folder.isEmpty ? source.path : "LAST · \(source.path) → \(folder)"
@@ -335,6 +338,9 @@ private struct EraseBar: View {
     let showEraseConfirmation: () -> Void
 
     private var detail: String {
+        if !model.sourceAllowsErase {
+            return "Erase is available only for camera-card volumes. Selected folders support transfer and verification."
+        }
         if model.canWipe {
             let root = model.currentCard?.rootURL.path ?? "the card"
             return "Every remaining file on \(root) has a verified copy · typed confirmation required"
