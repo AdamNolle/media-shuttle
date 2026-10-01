@@ -6,11 +6,33 @@ on:
       - "v*"
 
 permissions:
+  actions: read
   contents: write
 
 jobs:
+  choose-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runs_on: ${{ steps.select.outputs.runs_on }}
+    steps:
+      - name: Prefer the server runner when it is online
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
+            '.runners[] | select(.status == "online" and ([.labels[].name] | index("media-shuttle-release") != null))' >/dev/null; then
+            echo 'runs_on=["self-hosted","Windows","X64","media-shuttle-release"]' >> "$GITHUB_OUTPUT"
+            echo "Using the Adlon Windows runner."
+          else
+            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
+            echo "Adlon Windows runner is offline; using GitHub-hosted Windows."
+          fi
+
   release:
-    runs-on: windows-latest
+    needs: choose-runner
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runs_on) }}
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
@@ -19,10 +41,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --no-progress --yes
 
       - name: Verify tag matches project version
         shell: pwsh
@@ -50,12 +68,13 @@ jobs:
             ".\windows\artifacts\SHA256SUMS-windows.txt"
           )
 
-          gh release view $tag *> $null
+          $gh = Join-Path $env:ProgramFiles "GitHub CLI\gh.exe"
+          & $gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag @assets --clobber
+            & $gh release upload $tag @assets --clobber
           }
           else {
-            gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
+            & $gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
           }
 
           if ($LASTEXITCODE -ne 0) {
