@@ -2,7 +2,8 @@ name: Release Windows installer
 
 on:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -11,43 +12,14 @@ env:
   PSExecutionPolicyPreference: RemoteSigned
 
 jobs:
-  choose-runner:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    outputs:
-      runs_on: ${{ steps.select.outputs.runs_on }}
-      self_hosted: ${{ steps.select.outputs.self_hosted }}
-    steps:
-      - name: Prefer Adlon when it is online
-        id: select
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          if gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
-            '.runners[] | select(.status == "online" and .os == "Windows" and any(.labels[]; .name == "personal-ci"))' >/dev/null; then
-            echo 'runs_on=["self-hosted","Windows","X64","personal-ci"]' >> "$GITHUB_OUTPUT"
-            echo 'self_hosted=true' >> "$GITHUB_OUTPUT"
-            echo "Using the Adlon Windows runner."
-          else
-            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
-            echo 'self_hosted=false' >> "$GITHUB_OUTPUT"
-            echo "Adlon is offline; using GitHub-hosted Windows."
-          fi
-
   release:
-    needs: choose-runner
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runs_on) }}
-    permissions:
-      contents: write
+    runs-on: [self-hosted, Windows, X64, personal-ci]
     steps:
-      - name: Prepare Adlon build tools
-        if: needs.choose-runner.outputs.self_hosted == 'true'
+      - name: Set up personal Windows build tools
+        if: runner.os == 'Windows' && runner.environment == 'self-hosted'
         shell: powershell
         run: |
-          $paths = @('C:\Program Files\Git\bin', 'C:\Program Files\Git\cmd', 'C:\Program Files\PowerShell\7', 'C:\Program Files\GitHub CLI', 'C:\Program Files\7-Zip')
+          $paths = @('C:\Program Files\Git\bin', 'C:\Program Files\Git\cmd', 'C:\Program Files\PowerShell\7', 'C:\Program Files\GitHub CLI', 'C:\Program Files\7-Zip', 'C:\msys64\ucrt64\bin')
           $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
           if (Test-Path $vswhere) {
             $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -56,7 +28,10 @@ jobs:
           $paths | Where-Object { Test-Path $_ } | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           'AGENT_TOOLSDIRECTORY=C:\personal-ci\toolcache' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           'DOTNET_INSTALL_DIR=C:\personal-ci\toolcache\dotnet' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
+          $tools = Join-Path (Split-Path $env:RUNNER_TEMP -Parent) '_tool'
+          "CARGO_HOME=$tools\cargo" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RUSTUP_HOME=$tools\rustup" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$tools\cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Check out tagged source
         uses: actions/checkout@v4
 
@@ -64,11 +39,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-
-      - name: Install Inno Setup on GitHub-hosted Windows
-        if: needs.choose-runner.outputs.self_hosted != 'true'
-        shell: pwsh
-        run: choco install innosetup --no-progress --yes
 
       - name: Verify tag matches project version
         shell: pwsh
@@ -79,7 +49,7 @@ jobs:
             throw "Tag $env:GITHUB_REF_NAME does not match project version $expected."
           }
 
-      - name: Build, test, and package Windows release
+      - name: Build installer and portable package
         shell: pwsh
         run: .\windows\build.ps1 -Clean
 
@@ -95,16 +65,20 @@ jobs:
             ".\windows\artifacts\MediaShuttle-v$version-win-x64.zip",
             ".\windows\artifacts\SHA256SUMS-windows.txt"
           )
-          gh release view $tag *> $null
+
+          $gh = Join-Path $env:ProgramFiles "GitHub CLI\gh.exe"
+          & $gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag @assets --clobber
-          } else {
-            gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
+            & $gh release upload $tag @assets --clobber
+          }
+          else {
+            & $gh release create $tag @assets --verify-tag --generate-notes --title "Media Shuttle $version"
             if ($LASTEXITCODE -ne 0) {
               # The macOS workflow may have created the shared release first.
-              gh release upload $tag @assets --clobber
+              & $gh release upload $tag @assets --clobber
             }
           }
+
           if ($LASTEXITCODE -ne 0) {
             throw "GitHub release publishing failed with exit code $LASTEXITCODE."
           }

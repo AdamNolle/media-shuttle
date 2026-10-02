@@ -58,7 +58,7 @@ swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
 
 ## CI and releases
 
-GitHub Actions runs Windows and macOS safety checks on pushes and pull requests. Windows jobs use the online Adlon self-hosted runner when available and fall back to GitHub-hosted Windows; pull requests from forks always use the hosted runner. Pushing a `v*` tag that matches the Windows project version builds and tests both release packages and attaches them to the GitHub release.
+GitHub Actions runs Windows and macOS safety checks on pushes and pull requests. Windows CI uses the online Adlon self-hosted runner when available and falls back to GitHub-hosted Windows; pull requests from forks always use the hosted runner. Tagged Windows releases run on Adlon, while macOS releases use a macOS runner. Both release workflows test and attach their packages to the same GitHub release.
 
 ## Privacy
 
