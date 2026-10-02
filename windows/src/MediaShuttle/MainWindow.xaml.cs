@@ -21,9 +21,9 @@ public sealed partial class MainWindow : Window
     private const double MinimumActivityHeight = 88;
     private const double MaximumActivityHeight = 300;
     private const double MinimumActivityRowHeight = 125;
-    private const double SidebarWidth = 240;
-    private const double ColumnGap = 22;
-    private const double PanelPadding = 21;
+    private const double SidebarWidth = 216;
+    private const double ColumnGap = 1;
+    private const double PanelPadding = 26;
     // Stacking the sidebar above the operations column costs it its shape: a panel designed for a
     // 240px column, drawn 700px wide, is mostly gaps. Two columns hold down to the point where the
     // operations side would be narrower than the sidebar itself.
@@ -263,15 +263,17 @@ public sealed partial class MainWindow : Window
         bool narrow = width < NarrowLayoutWidth;
 
         SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(SidebarWidth);
+        DividerColumn.Width = narrow ? new GridLength(0) : new GridLength(1);
         OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        SourceDivider.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
         Grid.SetColumn(SourcePanel, 0);
         Grid.SetRow(SourcePanel, 0);
-        Grid.SetColumn(OperationsPanel, narrow ? 0 : 1);
+        Grid.SetColumn(OperationsPanel, narrow ? 0 : 2);
         Grid.SetRow(OperationsPanel, narrow ? 1 : 0);
         MainLayoutTopRow.Height = narrow ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
         MainLayoutBottomRow.Height = narrow ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-        MainLayout.ColumnSpacing = narrow ? 0 : ColumnGap;
-        Thickness padding = narrow ? new Thickness(16, 14, 16, 22) : new Thickness(24, 22, 24, 26);
+        MainLayout.ColumnSpacing = 0;
+        Thickness padding = narrow ? new Thickness(16, 14, 16, 22) : new Thickness(0);
         MainLayout.Padding = padding;
 
         bool compactTitleBar = width < 760;
@@ -292,26 +294,13 @@ public sealed partial class MainWindow : Window
         double operationsWidth = width - padding.Left - padding.Right - (narrow ? 0 : SidebarWidth + ColumnGap);
         double panelWidth = operationsWidth - PanelPadding * 2;
 
-        // An action beside a headline this narrow leaves neither of them a readable line, so below
-        // the breakpoint they stack instead.
-        HeroGrid.Width = Math.Min(operationsWidth, MaximumHeroWidth);
+        // Keep the short status and action together on wide windows.
+        HeroGrid.Width = Math.Min(Math.Max(1, operationsWidth - 24), MaximumHeroWidth);
+        HeroGrid.HorizontalAlignment = HorizontalAlignment.Left;
 
         bool stackActions = operationsWidth < StackedActionWidth;
-        SetActionPlacement(HeroGrid, HeroActionColumn, HeroActionPanel, stackActions, 226, 26);
         SetActionPlacement(EraseGrid, EraseActionColumn, WipeButton, stackActions, 236, 22);
 
-        // A 36px headline is three or four lines of it before a narrow window has said anything
-        // useful, so the display type comes down with the space it is given.
-        (double titleSize, double subtitleSize) = operationsWidth switch
-        {
-            < 420 => (24d, 13d),
-            < 620 => (28d, 14d),
-            _ => (36d, 15d)
-        };
-        HeroTitleText.FontSize = titleSize;
-        HeroTitleText.LineHeight = Math.Round(titleSize * 7 / 6);
-        HeroSubtitleText.FontSize = subtitleSize;
-        HeroSubtitleText.LineHeight = Math.Round(subtitleSize * 1.47);
 
         SetSessionStatsColumns(panelWidth switch
         {
@@ -697,6 +686,7 @@ public sealed partial class MainWindow : Window
         ResetProgressThrottle();
         _operationCancellation = new CancellationTokenSource();
         StatusInfoBar.IsOpen = false;
+        HeroGrid.Visibility = Visibility.Visible;
         SetOperationControls(true, allowCancel: true);
         TransferButton.Content = "Scanning media…";
         HeroTitleText.Text = "Copying and verifying your media.";
@@ -714,7 +704,7 @@ public sealed partial class MainWindow : Window
                 progress,
                 _operationCancellation.Token);
             _verifiedSession = result.Session;
-            UpdateVerifiedState(_currentCard, result.Session, justCompleted: true);
+            UpdateVerifiedState(_currentCard, result.Session);
             AddActivity(
                 $"Verified {result.Session.TotalFiles:N0} files — " +
                 $"{result.Session.CopiedCount:N0} copied, {result.Session.SkippedCount:N0} already safe.");
@@ -849,6 +839,7 @@ public sealed partial class MainWindow : Window
         _operationStartedUtc = DateTimeOffset.UtcNow;
         ResetProgressThrottle();
         StatusInfoBar.IsOpen = false;
+        HeroGrid.Visibility = Visibility.Visible;
         SetOperationControls(true, allowCancel: false);
         WipeButton.IsEnabled = false;
         HeroTitleText.Text = "Re-verifying before erase.";
@@ -1031,6 +1022,7 @@ public sealed partial class MainWindow : Window
     private void UpdateDetectedState(CardInfo card)
     {
         UpdateCardSummary(card);
+        HeroGrid.Visibility = Visibility.Visible;
         HeroTitleText.Text = "Card detected.";
         HeroSubtitleText.Text = "Ready to sort and verify the supported media at your selected destination.";
         TransferButton.Content = "Transfer + verify";
@@ -1044,6 +1036,7 @@ public sealed partial class MainWindow : Window
     private void UpdateVerifiedState(CardInfo card, TransferSession session, bool justCompleted = false)
     {
         UpdateCardSummary(card);
+        HeroGrid.Visibility = Visibility.Collapsed;
         HeroTitleText.Text = justCompleted ? "Transfer verified." : "Transfer already verified.";
         HeroSubtitleText.Text = justCompleted
             ? $"{session.TotalFiles:N0} media files match their destination copies. Erase is now available."
@@ -1060,6 +1053,7 @@ public sealed partial class MainWindow : Window
     private void UpdateEmptyCardState(CardInfo card, bool canWipe)
     {
         UpdateCardSummary(card);
+        HeroGrid.Visibility = Visibility.Visible;
         HeroTitleText.Text = "No supported media found.";
         HeroSubtitleText.Text = canWipe
             ? "No camera media remains. Verified transfer history still protects the erase action."
@@ -1112,6 +1106,7 @@ public sealed partial class MainWindow : Window
 
     private void UpdateDisconnectedState()
     {
+        HeroGrid.Visibility = Visibility.Visible;
         CardLabelText.Text = "No card connected";
         CardDetailText.Text = "Insert a removable camera card to begin.";
         CardStatsText.Text = "—";

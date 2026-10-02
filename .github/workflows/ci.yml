@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PSExecutionPolicyPreference: RemoteSigned
+
+jobs:
+  choose-windows-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runs_on: ${{ steps.select.outputs.runs_on }}
+      self_hosted: ${{ steps.select.outputs.self_hosted }}
+    steps:
+      - name: Select a safe Windows runner
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$HEAD_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
+            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
+            echo 'self_hosted=false' >> "$GITHUB_OUTPUT"
+            echo "Fork pull request: using an isolated GitHub-hosted runner."
+          elif gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
+            '.runners[] | select(.status == "online" and .os == "Windows" and any(.labels[]; .name == "personal-ci"))' >/dev/null; then
+            echo 'runs_on=["self-hosted","Windows","X64","personal-ci"]' >> "$GITHUB_OUTPUT"
+            echo 'self_hosted=true' >> "$GITHUB_OUTPUT"
+            echo "Using the Adlon Windows runner."
+          else
+            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
+            echo 'self_hosted=false' >> "$GITHUB_OUTPUT"
+            echo "Adlon is offline; using GitHub-hosted Windows."
+          fi
+
+  windows:
+    name: Windows build and core tests
+    needs: choose-windows-runner
+    runs-on: ${{ fromJSON(needs.choose-windows-runner.outputs.runs_on) }}
+    timeout-minutes: 30
+    steps:
+      - name: Prepare Adlon build tools
+        if: needs.choose-windows-runner.outputs.self_hosted == 'true'
+        shell: powershell
+        run: |
+          $paths = @('C:\Program Files\Git\bin', 'C:\Program Files\Git\cmd', 'C:\Program Files\PowerShell\7', 'C:\Program Files\GitHub CLI', 'C:\Program Files\7-Zip')
+          $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
+          if (Test-Path $vswhere) {
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($vs) { $paths += "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"; $paths += "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja" }
+          }
+          $paths | Where-Object { Test-Path $_ } | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          'AGENT_TOOLSDIRECTORY=C:\personal-ci\toolcache' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          'DOTNET_INSTALL_DIR=C:\personal-ci\toolcache\dotnet' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build and run core tests
+        shell: pwsh
+        run: .\windows\build.ps1 -Clean -SkipInstaller
+
+  macos:
+    name: macOS core tests
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Run safety suite
+        run: swift test --package-path macos --scratch-path "$RUNNER_TEMP/media-shuttle-tests"

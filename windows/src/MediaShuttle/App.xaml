@@ -9,21 +9,34 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FF0B0B0C" />
+                    <SolidColorBrush x:Key="ChromeBackgroundBrush" Color="#FF101012" />
+                    <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FF161618" />
+                    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FF121214" />
+                    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FF1A1A1D" />
+                    <SolidColorBrush x:Key="PanelFooterBackgroundBrush" Color="#FF17171A" />
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF0F1F2" />
+                    <SolidColorBrush x:Key="TextBrightBrush" Color="#FFD6DADE" />
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFB9BEC4" />
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#FF8B9198" />
+                    <SolidColorBrush x:Key="TextLabelBrush" Color="#FF949AA1" />
+                    <SolidColorBrush x:Key="HairlineBrush" Color="#1FFFFFFF" />
+                    <SolidColorBrush x:Key="HairlineSoftBrush" Color="#12FFFFFF" />
                     <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFFF625A" />
                     <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#14FF625A" />
-                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FFE34B43" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FF494343" />
-                    <SolidColorBrush x:Key="PrimaryActionForeground" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="PrimaryActionForegroundPointerOver" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="PrimaryActionForegroundPressed" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF9F9999" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FFFF7770" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FFFF8B85" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FF5D5656" />
+                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#FF1A1A1D" />
+                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD6DADE" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FFF0F1F2" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FFB9BEC4" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FF343539" />
+                    <SolidColorBrush x:Key="PrimaryActionForeground" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPointerOver" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundPressed" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF8B9198" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FFD6DADE" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FFF0F1F2" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FFB9BEC4" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FF343539" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF202420" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF56B870" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FF0E1C12" />
@@ -36,21 +49,34 @@
                     <SolidColorBrush x:Key="MediaKindVideoBrush" Color="#FF3F434A" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFF0F0F2" />
+                    <SolidColorBrush x:Key="ChromeBackgroundBrush" Color="#FFE8E8EA" />
+                    <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FFF7F7F8" />
+                    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FFFBFBFC" />
+                    <SolidColorBrush x:Key="PanelFooterBackgroundBrush" Color="#FFF4F4F6" />
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="TextBrightBrush" Color="#FF2A2C30" />
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FF4A4E54" />
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#FF6D7279" />
+                    <SolidColorBrush x:Key="TextLabelBrush" Color="#FF6D7279" />
+                    <SolidColorBrush x:Key="HairlineBrush" Color="#1F000000" />
+                    <SolidColorBrush x:Key="HairlineSoftBrush" Color="#12000000" />
                     <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFD33B34" />
                     <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#0FD33B34" />
-                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FFC9342D" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FFE3DEDE" />
+                    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#FFFBFBFC" />
+                    <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FF2A2C30" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPointerOver" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundPressed" Color="#FF4A4E54" />
+                    <SolidColorBrush x:Key="PrimaryActionBackgroundDisabled" Color="#FFE3E3E5" />
                     <SolidColorBrush x:Key="PrimaryActionForeground" Color="#FFFFFFFF" />
                     <SolidColorBrush x:Key="PrimaryActionForegroundPointerOver" Color="#FFFFFFFF" />
                     <SolidColorBrush x:Key="PrimaryActionForegroundPressed" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF817B7B" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FFD33B34" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FFC9342D" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FFB92D27" />
-                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FFC8C1C1" />
+                    <SolidColorBrush x:Key="PrimaryActionForegroundDisabled" Color="#FF6D7279" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrush" Color="#FF2A2C30" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPointerOver" Color="#FF1B1B1E" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushPressed" Color="#FF4A4E54" />
+                    <SolidColorBrush x:Key="PrimaryActionBorderBrushDisabled" Color="#FFE3E3E5" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFF2F5F2" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF287A40" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FFFFFFFF" />
@@ -74,7 +100,7 @@
                 <Setter Property="Background" Value="{ThemeResource PrimaryActionBackground}" />
                 <Setter Property="BackgroundSizing" Value="OuterBorderEdge" />
                 <Setter Property="BorderBrush" Value="{ThemeResource PrimaryActionBorderBrush}" />
-                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+                <Setter Property="CornerRadius" Value="0" />
                 <Setter Property="UseSystemFocusVisuals" Value="True" />
                 <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
                 <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource SpeedRedBrush}" />
@@ -132,10 +158,10 @@
             </Style>
             <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="10" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="100" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="CharacterSpacing" Value="115" />
+                <Setter Property="Foreground" Value="{ThemeResource TextLabelBrush}" />
             </Style>
             <Style x:Key="MetricValueStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Consolas" />
@@ -143,14 +169,14 @@
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="PanelBorderStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="Background" Value="{ThemeResource PanelBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="CornerRadius" Value="0" />
             </Style>
             <Style x:Key="BadgeBorderStyle" TargetType="Border">
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="CornerRadius" Value="0" />
                 <Setter Property="Padding" Value="5,2" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>

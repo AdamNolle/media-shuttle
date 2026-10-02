@@ -44,9 +44,12 @@ jobs:
               exit 0
             fi
             gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}"
-          else
-            gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
-              --verify-tag \
-              --generate-notes \
-              --title "Media Shuttle $VERSION"
-          fi
+  else
+    if ! gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+      --verify-tag \
+      --generate-notes \
+      --title "Media Shuttle $VERSION"; then
+      # The Windows release workflow may have created the shared release first.
+      gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+    fi
+  fi
