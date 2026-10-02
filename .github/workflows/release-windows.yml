@@ -6,33 +6,11 @@ on:
       - "v*"
 
 permissions:
-  actions: read
   contents: write
 
 jobs:
-  choose-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runs_on: ${{ steps.select.outputs.runs_on }}
-    steps:
-      - name: Prefer the server runner when it is online
-        id: select
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          if gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
-            '.runners[] | select(.status == "online" and ([.labels[].name] | index("media-shuttle-release") != null))' >/dev/null; then
-            echo 'runs_on=["self-hosted","Windows","X64","media-shuttle-release"]' >> "$GITHUB_OUTPUT"
-            echo "Using the Adlon Windows runner."
-          else
-            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
-            echo "Adlon Windows runner is offline; using GitHub-hosted Windows."
-          fi
-
   release:
-    needs: choose-runner
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runs_on) }}
+    runs-on: [self-hosted, Windows, X64, personal-ci]
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
