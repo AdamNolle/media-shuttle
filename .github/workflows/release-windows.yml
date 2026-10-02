@@ -6,34 +6,32 @@ on:
       - "v*"
 
 permissions:
-  actions: read
   contents: write
 
-jobs:
-  choose-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runs_on: ${{ steps.select.outputs.runs_on }}
-    steps:
-      - name: Prefer the server runner when it is online
-        id: select
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          if gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
-            '.runners[] | select(.status == "online" and ([.labels[].name] | index("media-shuttle-release") != null))' >/dev/null; then
-            echo 'runs_on=["self-hosted","Windows","X64","media-shuttle-release"]' >> "$GITHUB_OUTPUT"
-            echo "Using the Adlon Windows runner."
-          else
-            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
-            echo "Adlon Windows runner is offline; using GitHub-hosted Windows."
-          fi
+env:
+  PSExecutionPolicyPreference: RemoteSigned
 
+jobs:
   release:
-    needs: choose-runner
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runs_on) }}
+    runs-on: [self-hosted, Windows, X64, personal-ci]
     steps:
+      - name: Set up personal Windows build tools
+        if: runner.os == 'Windows' && runner.environment == 'self-hosted'
+        shell: powershell
+        run: |
+          $paths = @('C:\Program Files\Git\bin', 'C:\Program Files\Git\cmd', 'C:\Program Files\PowerShell\7', 'C:\Program Files\GitHub CLI', 'C:\Program Files\7-Zip', 'C:\msys64\ucrt64\bin')
+          $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
+          if (Test-Path $vswhere) {
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($vs) { $paths += "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"; $paths += "$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja" }
+          }
+          $paths | Where-Object { Test-Path $_ } | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          'AGENT_TOOLSDIRECTORY=C:\personal-ci\toolcache' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          'DOTNET_INSTALL_DIR=C:\personal-ci\toolcache\dotnet' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $tools = Join-Path (Split-Path $env:RUNNER_TEMP -Parent) '_tool'
+          "CARGO_HOME=$tools\cargo" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RUSTUP_HOME=$tools\rustup" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$tools\cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Check out tagged source
         uses: actions/checkout@v4
 
