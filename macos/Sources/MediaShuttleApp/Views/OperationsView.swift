@@ -194,15 +194,17 @@ private struct SessionPanel: View {
 
             // With no card the title reads "Scan for media", so run a scan
             // rather than a transfer.
-            Button(model.primaryActionTitle) {
-                if hasCard {
+            Button(model.isDestinationAvailable ? model.primaryActionTitle : "Choose destination") {
+                if !model.isDestinationAvailable {
+                    model.chooseDestination()
+                } else if hasCard {
                     model.startTransfer()
                 } else {
                     model.scanNow()
                 }
             }
             .buttonStyle(ShuttleButtonStyle(kind: .primary))
-            .disabled(hasCard ? !model.canTransfer : model.isBusy)
+            .disabled(model.isDestinationAvailable ? (hasCard ? !model.canTransfer : model.isBusy) : model.isBusy)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 7)

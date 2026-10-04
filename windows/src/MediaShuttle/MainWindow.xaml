@@ -132,6 +132,7 @@
                         <StackPanel Grid.Row="6" Spacing="10">
                             <TextBlock Text="DESTINATION" Style="{StaticResource SectionLabelStyle}" />
                             <TextBlock x:Name="DestinationText" Text="~\Desktop\Camera" FontFamily="Cascadia Mono" FontSize="13" FontWeight="Medium" Foreground="{ThemeResource TextBrightBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Destination folder path" />
+                            <TextBlock x:Name="DestinationWarningText" Text="Destination folder is missing or unavailable. Choose an existing folder to transfer." FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource MediaKindVideoBrush}" TextWrapping="Wrap" Visibility="Collapsed" AutomationProperties.Name="Destination unavailable" />
                             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <Button x:Name="ChangeDestinationButton" Content="Change" Style="{StaticResource ShuttleSecondaryButtonStyle}" HorizontalAlignment="Stretch" AutomationProperties.Name="Choose destination folder" />
                                 <Button x:Name="OpenFolderButton" Grid.Column="1" Content="Open" Style="{StaticResource ShuttleSecondaryButtonStyle}" HorizontalAlignment="Stretch" AutomationProperties.Name="Open destination folder" />

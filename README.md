@@ -54,7 +54,7 @@ Requires Xcode 26 or later and Swift 6.
 ```bash
 swift run --package-path macos MediaShuttle
 swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
-./macos/scripts/package-macos.sh 0.1.1
+./macos/scripts/package-macos.sh 0.1.2
 ```
 
 ## CI and releases

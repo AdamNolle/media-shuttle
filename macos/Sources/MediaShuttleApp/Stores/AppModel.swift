@@ -290,8 +290,11 @@ final class AppModel {
 
     func startTransfer() {
         guard operationTask == nil else { return }
+        if isDestinationAvailable && !FileManager.default.fileExists(atPath: destinationURL.path) {
+            isDestinationAvailable = false
+        }
         guard isDestinationAvailable else {
-            showError("Choose a destination", "Select an available destination folder before transferring.")
+            chooseDestination()
             return
         }
         guard let card = currentCard else {

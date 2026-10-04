@@ -110,9 +110,15 @@ struct MediaShuttleApp: App {
                     .keyboardShortcut("r", modifiers: [.command])
                     .disabled(model.isBusy)
 
-                Button("Transfer and Verify") { model.startTransfer() }
+                Button(model.isDestinationAvailable ? "Transfer and Verify" : "Choose Destination…") {
+                    if model.isDestinationAvailable {
+                        model.startTransfer()
+                    } else {
+                        model.chooseDestination()
+                    }
+                }
                     .keyboardShortcut("t", modifiers: [.command])
-                    .disabled(!model.canTransfer)
+                    .disabled(model.isDestinationAvailable ? !model.canTransfer : model.isBusy)
 
                 Divider()
 

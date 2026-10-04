@@ -95,8 +95,16 @@ struct SourcePanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel("Destination folder")
 
+            if !model.isDestinationAvailable {
+                Text("Destination folder is missing or unavailable. Choose an existing folder to transfer.")
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("Destination unavailable")
+            }
+
             HStack(spacing: 5) {
-                Button("Change", action: model.chooseDestination)
+                Button(model.isDestinationAvailable ? "Change" : "Choose folder", action: model.chooseDestination)
                     .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
                     .disabled(model.isBusy)
                 Button("Open", action: model.openDestination)

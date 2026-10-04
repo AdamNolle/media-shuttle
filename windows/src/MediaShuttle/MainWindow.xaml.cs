@@ -200,7 +200,11 @@ public sealed partial class MainWindow : Window
         };
         WipeButton.Click += async (_, _) => await ConfirmAndWipeAsync();
         ReportButton.Click += (_, _) => OpenSessionReport();
-        SessionTransferAgainButton.Click += async (_, _) => await StartTransferAsync();
+        SessionTransferAgainButton.Click += async (_, _) =>
+        {
+            if (_destinationAvailable) await StartTransferAsync();
+            else await ChooseDestinationAsync();
+        };
         AutoTransferToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
         GroupByDateToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
         NotificationsToggle.Toggled += async (_, _) => await SaveSettingsFromControlsAsync();
@@ -228,9 +232,14 @@ public sealed partial class MainWindow : Window
             () => DispatcherQueue.TryEnqueue(OpenDestinationFolder),
             () => DispatcherQueue.TryEnqueue(ExitApplication),
             () => DispatcherQueue.TryEnqueue(async () => { ShowWindow(); await ChooseSourceAsync(); }),
-            () => DispatcherQueue.TryEnqueue(async () => await StartTransferAsync()),
+            () => DispatcherQueue.TryEnqueue(async () =>
+            {
+                if (_destinationAvailable) await StartTransferAsync();
+                else { ShowWindow(); await ChooseDestinationAsync(); }
+            }),
             () => !_busy,
-            () => !_busy && _destinationAvailable && _currentCard is not null && _lastScannedMediaCount > 0);
+            () => !_busy && (!_destinationAvailable || (_currentCard is not null && _lastScannedMediaCount > 0)),
+            () => _destinationAvailable);
         Root.Loaded += async (_, _) =>
         {
 #if DEBUG
@@ -722,6 +731,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _scanInProgress = false;
+            UpdateDestinationAction();
         }
     }
 
@@ -732,9 +742,14 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        if (_destinationAvailable && !Directory.Exists(_destinationRoot))
+        {
+            _destinationAvailable = false;
+            UpdateDestinationDisplay();
+        }
         if (!_destinationAvailable)
         {
-            ShowError("Choose a destination", "Select an available destination folder before transferring.");
+            await ChooseDestinationAsync();
             return;
         }
         if (_currentCard is null)
@@ -1385,6 +1400,7 @@ public sealed partial class MainWindow : Window
         SessionTransferAgainButton.IsEnabled = !active && _destinationAvailable && (_currentCard is null || _lastScannedMediaCount > 0);
         if (active) SessionTransferAgainButton.Content = "Transfer in progress";
         else if (_verifiedSession is not null) SessionTransferAgainButton.Content = "Transfer again";
+        UpdateDestinationAction();
     }
 
     private void SetTopStatus(string text, Brush brush)
@@ -1619,6 +1635,22 @@ public sealed partial class MainWindow : Window
     {
         DestinationText.Text = _destinationRoot;
         DestinationText.SetValue(ToolTipService.ToolTipProperty, _destinationRoot);
+        DestinationWarningText.Visibility = _destinationAvailable ? Visibility.Collapsed : Visibility.Visible;
+        ChangeDestinationButton.Content = _destinationAvailable ? "Change" : "Choose folder";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            SessionTransferAgainButton, _destinationAvailable
+                ? "Transfer and verify media"
+                : "Choose destination folder to enable transfer");
+        UpdateDestinationAction();
+    }
+
+    private void UpdateDestinationAction()
+    {
+        if (_destinationAvailable || _busy) return;
+        SessionTransferAgainButton.Content = "Choose destination";
+        SessionTransferAgainButton.IsEnabled = true;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            SessionTransferAgainButton, "Choose destination folder to enable transfer");
     }
 
     private static string DefaultDestinationRoot() =>
@@ -1652,6 +1684,7 @@ public sealed partial class MainWindow : Window
             IsDestinationException(exception) || exception is Win32Exception)
         {
             _destinationAvailable = false;
+            UpdateDestinationDisplay();
             SetOperationControls(false, allowCancel: false);
             ShowError("Destination unavailable", exception.Message);
             AddActivity("Destination unavailable: " + exception.Message);

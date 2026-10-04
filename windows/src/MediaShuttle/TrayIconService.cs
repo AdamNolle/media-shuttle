@@ -41,6 +41,7 @@ internal sealed class TrayIconService : IDisposable
     private readonly Action _transfer;
     private readonly Func<bool> _canChooseSource;
     private readonly Func<bool> _canTransfer;
+    private readonly Func<bool> _destinationAvailable;
     private readonly SubclassProcedure _subclassProcedure;
     private readonly UIntPtr _subclassId = new(0x4D534855);
     private NotifyIconData _data;
@@ -56,7 +57,8 @@ internal sealed class TrayIconService : IDisposable
         Action chooseSource,
         Action transfer,
         Func<bool> canChooseSource,
-        Func<bool> canTransfer)
+        Func<bool> canTransfer,
+        Func<bool> destinationAvailable)
     {
         _windowHandle = windowHandle;
         _open = open;
@@ -66,6 +68,7 @@ internal sealed class TrayIconService : IDisposable
         _transfer = transfer;
         _canChooseSource = canChooseSource;
         _canTransfer = canTransfer;
+        _destinationAvailable = destinationAvailable;
         _subclassProcedure = WindowSubclass;
         _iconHandle = LoadImage(IntPtr.Zero, iconPath, ImageIcon, 32, 32, LrLoadFromFile);
         if (_iconHandle == IntPtr.Zero)
@@ -142,7 +145,8 @@ internal sealed class TrayIconService : IDisposable
         {
             AppendMenu(menu, MfString, 1, "Open Media Shuttle");
             AppendMenu(menu, _canChooseSource() ? MfString : 1u, 4, "Choose source…");
-            AppendMenu(menu, _canTransfer() ? MfString : 1u, 5, "Transfer and verify");
+            AppendMenu(menu, _canTransfer() ? MfString : 1u, 5,
+                _destinationAvailable() ? "Transfer and verify" : "Choose destination…");
             AppendMenu(menu, MfString, 2, "Open destination folder");
             AppendMenu(menu, MfSeparator, 0, null);
             AppendMenu(menu, MfString, 3, "Exit");

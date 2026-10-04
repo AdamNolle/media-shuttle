@@ -27,12 +27,16 @@ struct MenuBarView: View {
         }
         .disabled(model.isBusy)
 
-        Button("Transfer and Verify") {
+        Button(model.isDestinationAvailable ? "Transfer and Verify" : "Choose Destination…") {
             openWindow(id: "main")
             AppDelegate.presentMainWindow()
-            model.startTransfer()
+            if model.isDestinationAvailable {
+                model.startTransfer()
+            } else {
+                model.chooseDestination()
+            }
         }
-        .disabled(!model.canTransfer)
+        .disabled(model.isDestinationAvailable ? !model.canTransfer : model.isBusy)
 
         Button("Open Destination", action: model.openDestination)
             .disabled(!model.isDestinationAvailable)
