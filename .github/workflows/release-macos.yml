@@ -36,20 +36,15 @@ jobs:
           )
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            # A maintainer may have already uploaded a signed, notarized build.
-            # Never replace that artifact with this workflow's ad-hoc build.
             if gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' \
               | rg --fixed-strings --line-regexp "MediaShuttle-v$VERSION-macOS-universal.dmg"; then
               echo "Preserving the existing macOS release artifact."
               exit 0
             fi
-            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}"
-  else
-    if ! gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
-      --verify-tag \
-      --generate-notes \
-      --title "Media Shuttle $VERSION"; then
-      # The Windows release workflow may have created the shared release first.
-      gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
-    fi
-  fi
+            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+              --verify-tag \
+              --generate-notes \
+              --title "Media Shuttle $VERSION"
+          fi
