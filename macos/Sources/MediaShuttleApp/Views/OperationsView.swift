@@ -6,7 +6,7 @@ struct OperationsView: View {
     let showEraseConfirmation: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 14) {
             if let banner = model.banner {
                 BannerView(message: banner, onDismiss: model.dismissBanner)
             }
@@ -24,8 +24,8 @@ struct OperationsView: View {
 
             EraseBar(model: model, showEraseConfirmation: showEraseConfirmation)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
     }
 }
 

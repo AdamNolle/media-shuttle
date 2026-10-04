@@ -21,6 +21,7 @@ Media Shuttle sorts photos and videos into a predictable folder layout, checks e
 - Writes to a temporary file, hashes the card copy and destination copy independently, and publishes only when they match.
 - Reuses identical files already at the destination and keeps different name collisions.
 - Watches for cards in the background, with optional automatic transfer and native notifications.
+- Opens a camera card folder manually when automatic detection misses it. Use the Source panel, Ctrl+O on Windows, or File → Open Camera Card Folder on macOS.
 
 Erase is available only after a verified transfer. Before deleting, the app rescans the card and verifies every remaining file against its destination copy. Unknown files keep erase locked. Erasing removes user content; it does not format the card. Type `ERASE EVERYTHING` to confirm. Use the camera's Format command when you need a fresh filesystem.
 
@@ -53,12 +54,12 @@ Requires Xcode 26 or later and Swift 6.
 ```bash
 swift run --package-path macos MediaShuttle
 swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
-./macos/scripts/package-macos.sh 0.1.0
+./macos/scripts/package-macos.sh 0.1.1
 ```
 
 ## CI and releases
 
-GitHub Actions runs Windows and macOS safety checks on pushes and pull requests. Windows CI uses the online Adlon self-hosted runner when available and falls back to GitHub-hosted Windows; pull requests from forks always use the hosted runner. Tagged Windows releases run on Adlon, while macOS releases use a macOS runner. Both release workflows test and attach their packages to the same GitHub release.
+GitHub Actions runs Windows and macOS safety checks on pushes and pull requests using the personal runners. Pull requests from forks use GitHub-hosted runners for isolation. Tagged Windows releases run on Adlon, while macOS releases run on the Mac runner. Both release workflows test and attach their packages to the same GitHub release.
 
 ## Privacy
 

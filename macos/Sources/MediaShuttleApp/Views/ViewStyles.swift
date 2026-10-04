@@ -42,7 +42,7 @@ enum Theme {
     static let fillStrong = Color.primary.opacity(0.09)
 
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        .system(size: size * 1.3, weight: weight, design: .monospaced)
     }
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
@@ -204,8 +204,8 @@ struct ShuttleButtonStyle: ButtonStyle {
                 .font(Theme.mono(10.5, kind == .secondary ? .regular : .semibold))
                 .foregroundStyle(foreground)
                 .lineLimit(1)
-                .padding(.horizontal, 10)
-                .frame(height: 22)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
                 .frame(maxWidth: fullWidth ? .infinity : nil)
                 .background(background)
                 .overlay(Rectangle().strokeBorder(border, lineWidth: 1))
@@ -261,9 +261,9 @@ struct ChromeIconButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(.system(size: 12))
+                .font(.system(size: 15))
                 .foregroundStyle(isHovering ? Theme.textPrimary : Theme.textMuted)
-                .frame(width: 26, height: 22)
+                .frame(width: 32, height: 32)
                 .background(isHovering ? Theme.fillStrong : .clear)
                 .contentShape(Rectangle())
                 .opacity(configuration.isPressed ? 0.7 : 1)

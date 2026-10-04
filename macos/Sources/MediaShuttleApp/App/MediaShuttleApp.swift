@@ -95,16 +95,17 @@ struct MediaShuttleApp: App {
                 .preferredColorScheme(model.appearance)
                 .task { await model.start() }
         }
-        .defaultSize(width: 1_060, height: 530)
+        .defaultSize(width: 1_180, height: 720)
         .defaultPosition(.center)
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .commands {
-            CommandMenu("Media") {
-                Button("Choose Source…", action: model.chooseSource)
-                    .keyboardShortcut("s", modifiers: [.command, .shift])
+            CommandGroup(after: .newItem) {
+                Button("Open Camera Card Folder…", action: model.chooseSource)
+                    .keyboardShortcut("o", modifiers: [.command])
                     .disabled(model.isBusy)
-
+            }
+            CommandMenu("Media") {
                 Button("Scan for Camera Media") { model.scanNow() }
                     .keyboardShortcut("r", modifiers: [.command])
                     .disabled(model.isBusy)

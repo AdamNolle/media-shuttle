@@ -1,18 +1,18 @@
 <Window x:Class="MediaShuttle.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="Root" Background="{ThemeResource ContentBackgroundBrush}">
-        <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Grid Background="{ThemeResource ChromeBackgroundBrush}">
-            <Grid x:Name="AppHeader" Margin="14,0,160,0">
+            <Grid x:Name="AppHeader" Margin="20,0,160,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <Image x:Name="AppLogo" Width="15" Height="15" Source="Assets/ReferenceMark.png" VerticalAlignment="Center" AutomationProperties.Name="Media Shuttle logo" />
-                <TextBlock x:Name="AppNameText" Grid.Column="1" Text="MEDIA SHUTTLE" FontFamily="Cascadia Mono" FontSize="10.5" FontWeight="SemiBold" CharacterSpacing="110" Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                <TextBlock x:Name="AppNameText" Grid.Column="1" Text="MEDIA SHUTTLE" FontFamily="Cascadia Mono" FontSize="13" FontWeight="SemiBold" CharacterSpacing="110" Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0" />
                 <Border x:Name="StatusPill" Grid.Column="2" Style="{StaticResource BadgeBorderStyle}" Background="{ThemeResource PanelBackgroundBrush}" Padding="7,3" Margin="12,0,0,0" AutomationProperties.Name="Media status" AutomationProperties.LiveSetting="Polite">
-                    <StackPanel Orientation="Horizontal" Spacing="6"><Rectangle x:Name="StatusDot" Width="5" Height="5" Fill="{ThemeResource TextMutedBrush}" VerticalAlignment="Center" /><TextBlock x:Name="TopStatusText" Text="WAITING FOR MEDIA" FontFamily="Cascadia Mono" FontSize="9.5" CharacterSpacing="74" Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Rectangle x:Name="StatusDot" Width="5" Height="5" Fill="{ThemeResource TextMutedBrush}" VerticalAlignment="Center" /><TextBlock x:Name="TopStatusText" Text="WAITING FOR MEDIA" FontFamily="Cascadia Mono" FontSize="12" CharacterSpacing="74" Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center" /></StackPanel>
                 </Border>
                 <Button x:Name="SettingsButton" Grid.Column="4" Width="22" Height="22" Padding="0" Style="{StaticResource ChromeIconButtonStyle}" ToolTipService.ToolTip="Settings" AutomationProperties.Name="Open settings">
                     <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterStyle="{StaticResource ShuttleFlyoutStyle}">
-                        <StackPanel Width="280" Spacing="12">
+                        <StackPanel Width="340" Spacing="14">
                             <StackPanel.Resources>
                                 <ResourceDictionary>
                                     <ResourceDictionary.ThemeDictionaries>
@@ -30,8 +30,8 @@
                                 </ResourceDictionary>
                             </StackPanel.Resources>
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Settings" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" />
-                                <TextBlock Text="Transfer behavior and appearance" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" />
+                                <TextBlock Text="Settings" FontSize="17" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" />
+                                <TextBlock Text="Transfer behavior and appearance" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" />
                             </StackPanel>
                             <StackPanel Spacing="7">
                                 <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabelStyle}" />
@@ -59,8 +59,6 @@
                                 </ComboBox>
                             </StackPanel>
                             <Rectangle Height="1" Fill="{ThemeResource HairlineBrush}" />
-                            <Button x:Name="ChooseSourceButton" Content="Choose media source…" Style="{StaticResource ShuttleSecondaryButtonStyle}" Height="28" HorizontalAlignment="Stretch" />
-                            <Button x:Name="AutomaticSourceButton" Content="Use auto-detect" Style="{StaticResource ShuttleSecondaryButtonStyle}" Height="28" Visibility="Collapsed" HorizontalAlignment="Stretch" />
                             <ToggleSwitch x:Name="AutoTransferToggle" Style="{StaticResource ShuttleToggleStyle}" Header="Automatic transfer" OffContent="Off" OnContent="On" />
                             <ToggleSwitch x:Name="GroupByDateToggle" Style="{StaticResource ShuttleToggleStyle}" Header="Date folders" OffContent="Flat folders" OnContent="YYYY-MM-DD" />
                             <ToggleSwitch x:Name="NotificationsToggle" Style="{StaticResource ShuttleToggleStyle}" Header="Completion notifications" OffContent="Off" OnContent="On" />
@@ -69,30 +67,36 @@
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>
-                    <FontIcon Glyph="&#xE713;" FontSize="12" />
+                    <FontIcon Glyph="&#xE713;" FontSize="14" />
                 </Button>
             </Grid>
             <Rectangle Height="1" VerticalAlignment="Bottom" Fill="{ThemeResource HairlineBrush}" />
         </Grid>
         <ScrollViewer x:Name="RootScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid x:Name="MainLayout" MaxWidth="1760" HorizontalAlignment="Center">
-                <Grid.ColumnDefinitions><ColumnDefinition x:Name="SourceColumn" Width="216" /><ColumnDefinition x:Name="DividerColumn" Width="1" /><ColumnDefinition x:Name="OperationsColumn" Width="*" /></Grid.ColumnDefinitions>
+            <Grid x:Name="MainLayout" HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions><ColumnDefinition x:Name="SourceColumn" Width="280" /><ColumnDefinition x:Name="DividerColumn" Width="1" /><ColumnDefinition x:Name="OperationsColumn" Width="*" /></Grid.ColumnDefinitions>
                 <Grid.RowDefinitions><RowDefinition x:Name="MainLayoutTopRow" Height="*" /><RowDefinition x:Name="MainLayoutBottomRow" Height="Auto" /></Grid.RowDefinitions>
-                <Border x:Name="SourcePanel" Background="{ThemeResource SidebarBackgroundBrush}" Padding="11,11" AutomationProperties.Name="Source media summary">
+                <Border x:Name="SourcePanel" Background="{ThemeResource SidebarBackgroundBrush}" Padding="18,18" AutomationProperties.Name="Source media summary">
                     <Grid>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="26" /><RowDefinition Height="Auto" /><RowDefinition Height="26" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="30" /><RowDefinition Height="Auto" /><RowDefinition Height="30" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <TextBlock Text="SOURCE" Style="{StaticResource SectionLabelStyle}" />
-                        <Grid Grid.Row="1" ColumnSpacing="9" Margin="0,10,0,0" VerticalAlignment="Top">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="38" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Image Width="38" Height="50" Source="Assets/ReferenceCard.png" VerticalAlignment="Top" AutomationProperties.Name="Camera media card icon" />
+                        <Grid Grid.Row="1" ColumnSpacing="12" Margin="0,14,0,0" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Image Width="48" Height="64" Source="Assets/ReferenceCard.png" VerticalAlignment="Top" AutomationProperties.Name="Camera media card icon" />
                             <StackPanel Grid.Column="1" Spacing="3">
-                                <TextBlock x:Name="CardLabelText" Text="No card connected" FontSize="12.5" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock x:Name="CardDetailText" Text="Choose a source or insert a camera card." FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
-                                <TextBlock x:Name="CardStatsText" Text="—" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" />
+                                <TextBlock x:Name="CardLabelText" Text="No card connected" FontSize="16" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="CardDetailText" Text="Choose a source or insert a camera card." FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
+                                <TextBlock x:Name="CardStatsText" Text="—" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" />
                             </StackPanel>
                         </Grid>
-                        <Rectangle Grid.Row="2" Height="1" Fill="{ThemeResource HairlineBrush}" VerticalAlignment="Center" />
-                        <StackPanel Grid.Row="3" Spacing="10">
+                        <StackPanel Grid.Row="2" Spacing="8" Margin="0,16,0,0">
+                            <Button x:Name="ChooseSourceButton" Content="Open card folder…" Style="{StaticResource PrimaryTransferButtonStyle}" HorizontalAlignment="Stretch" AutomationProperties.Name="Open camera card folder">
+                                <Button.KeyboardAccelerators><KeyboardAccelerator Key="O" Modifiers="Control" /></Button.KeyboardAccelerators>
+                            </Button>
+                            <Button x:Name="AutomaticSourceButton" Content="Use auto-detect" Style="{StaticResource ShuttleSecondaryButtonStyle}" Visibility="Collapsed" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <Rectangle Grid.Row="3" Height="1" Fill="{ThemeResource HairlineBrush}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Row="4" Spacing="12">
                             <TextBlock Text="CARD CONTENTS" Style="{StaticResource SectionLabelStyle}" />
                             <Grid x:Name="CardContentsBar" Height="6" ColumnSpacing="1" Background="{ThemeResource HairlineSoftBrush}">
                                 <Grid.ColumnDefinitions><ColumnDefinition x:Name="JpegSegmentColumn" Width="1*" /><ColumnDefinition x:Name="RawSegmentColumn" Width="1*" /><ColumnDefinition x:Name="OtherSegmentColumn" Width="1*" /><ColumnDefinition x:Name="VideoSegmentColumn" Width="1*" /></Grid.ColumnDefinitions>
@@ -101,91 +105,91 @@
                             <StackPanel><Grid ColumnSpacing="6" Margin="0,4">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindJpegBrush}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="JPEG" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextSecondaryBrush}" />
-        <TextBlock x:Name="JpegCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="9.5" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
+        <TextBlock Grid.Column="1" Text="JPEG" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" />
+        <TextBlock x:Name="JpegCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
     </Grid>
 <Grid ColumnSpacing="6" Margin="0,4">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindRawBrush}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="RAW" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextSecondaryBrush}" />
-        <TextBlock x:Name="RawCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="9.5" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
+        <TextBlock Grid.Column="1" Text="RAW" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" />
+        <TextBlock x:Name="RawCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
     </Grid>
 <Grid ColumnSpacing="6" Margin="0,4">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindOtherBrush}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="OTHER" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextSecondaryBrush}" />
-        <TextBlock x:Name="OtherCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="9.5" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
+        <TextBlock Grid.Column="1" Text="OTHER" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" />
+        <TextBlock x:Name="OtherCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
     </Grid>
 <Grid ColumnSpacing="6" Margin="0,4">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Rectangle Width="7" Height="7" Fill="{ThemeResource MediaKindVideoBrush}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="VIDEO" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextSecondaryBrush}" />
-        <TextBlock x:Name="VideoCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="9.5" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
+        <TextBlock Grid.Column="1" Text="VIDEO" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" />
+        <TextBlock x:Name="VideoCountText" Grid.Column="2" Text="—" FontFamily="Cascadia Mono" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextBrightBrush}" />
     </Grid></StackPanel>
                             <Grid Visibility="Collapsed"><TextBlock x:Name="CapacityText" /><Grid x:Name="CapacityBar"><Grid.ColumnDefinitions><ColumnDefinition x:Name="CapacityUsedColumn" Width="0*" /><ColumnDefinition x:Name="CapacityFreeColumn" Width="100*" /></Grid.ColumnDefinitions></Grid></Grid>
                         </StackPanel>
-                        <Rectangle Grid.Row="4" Height="1" Fill="{ThemeResource HairlineBrush}" VerticalAlignment="Center" />
-                        <StackPanel Grid.Row="5" Spacing="8">
+                        <Rectangle Grid.Row="5" Height="1" Fill="{ThemeResource HairlineBrush}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Row="6" Spacing="10">
                             <TextBlock Text="DESTINATION" Style="{StaticResource SectionLabelStyle}" />
-                            <TextBlock x:Name="DestinationText" Text="~\Desktop\Camera" FontFamily="Cascadia Mono" FontSize="10.5" FontWeight="Medium" Foreground="{ThemeResource TextBrightBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Destination folder path" />
+                            <TextBlock x:Name="DestinationText" Text="~\Desktop\Camera" FontFamily="Cascadia Mono" FontSize="13" FontWeight="Medium" Foreground="{ThemeResource TextBrightBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Destination folder path" />
                             <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <Button x:Name="ChangeDestinationButton" Content="Change" Style="{StaticResource ShuttleSecondaryButtonStyle}" HorizontalAlignment="Stretch" AutomationProperties.Name="Choose destination folder" />
                                 <Button x:Name="OpenFolderButton" Grid.Column="1" Content="Open" Style="{StaticResource ShuttleSecondaryButtonStyle}" HorizontalAlignment="Stretch" AutomationProperties.Name="Open destination folder" />
                             </Grid>
-                            <TextBlock Text="Photos\JPEGs&#10;Photos\RAWs&#10;Photos\Other&#10;Videos" FontFamily="Cascadia Mono" FontSize="9.5" LineHeight="14" Foreground="{ThemeResource TextMutedBrush}" AutomationProperties.Name="Destination folder layout" />
+                            <TextBlock Text="Photos\JPEGs&#10;Photos\RAWs&#10;Photos\Other&#10;Videos" FontFamily="Cascadia Mono" FontSize="12" LineHeight="18" Foreground="{ThemeResource TextMutedBrush}" AutomationProperties.Name="Destination folder layout" />
                         </StackPanel>
                     </Grid>
                 </Border>
                 <Rectangle x:Name="SourceDivider" Grid.Column="1" Grid.RowSpan="2" Width="1" Fill="{ThemeResource HairlineBrush}" />
-                <Grid x:Name="OperationsPanel" Grid.Column="2" RowSpacing="9" Padding="11,11,11,11">
+                <Grid x:Name="OperationsPanel" Grid.Column="2" RowSpacing="14" Padding="20,18,20,18">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition x:Name="ActivityRow" Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <InfoBar x:Name="StatusInfoBar" Visibility="Collapsed" IsOpen="False" />
                     <Border x:Name="StatusBanner" Visibility="Collapsed" BorderThickness="1" CornerRadius="0" Padding="9,7">
                         <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="14" /><ColumnDefinition Width="*" /><ColumnDefinition Width="22" /></Grid.ColumnDefinitions>
-                            <Rectangle x:Name="BannerAccentStrip" Width="3" Margin="-9,-7,0,-7" HorizontalAlignment="Left" IsHitTestVisible="False" /><Border x:Name="BannerIconBox" Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"><FontIcon x:Name="BannerIcon" Glyph="&#xE73E;" FontSize="9" FontWeight="Bold" Foreground="{ThemeResource ContentBackgroundBrush}" /></Border>
-                            <StackPanel Grid.Column="1" Spacing="2"><TextBlock x:Name="BannerTitleText" FontSize="11.5" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextWrapping="Wrap" /><TextBlock x:Name="BannerMessageText" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextSecondaryBrush}" TextWrapping="Wrap" /></StackPanel>
-                            <Button x:Name="DismissBannerButton" Grid.Column="2" Style="{StaticResource ChromeIconButtonStyle}" Width="22" Height="22" Padding="0" VerticalAlignment="Top" AutomationProperties.Name="Dismiss notification"><FontIcon Glyph="&#xE711;" FontSize="9" /></Button>
+                            <Rectangle x:Name="BannerAccentStrip" Width="3" Margin="-9,-7,0,-7" HorizontalAlignment="Left" IsHitTestVisible="False" /><Border x:Name="BannerIconBox" Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"><FontIcon x:Name="BannerIcon" Glyph="&#xE73E;" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource ContentBackgroundBrush}" /></Border>
+                            <StackPanel Grid.Column="1" Spacing="2"><TextBlock x:Name="BannerTitleText" FontSize="14.5" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextWrapping="Wrap" /><TextBlock x:Name="BannerMessageText" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" TextWrapping="Wrap" /></StackPanel>
+                            <Button x:Name="DismissBannerButton" Grid.Column="2" Style="{StaticResource ChromeIconButtonStyle}" Width="22" Height="22" Padding="0" VerticalAlignment="Top" AutomationProperties.Name="Dismiss notification"><FontIcon Glyph="&#xE711;" FontSize="11" /></Button>
                         </Grid>
                     </Border>
                     <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
                         <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <Grid Padding="9,8,9,8" RowSpacing="6"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /></Grid.RowDefinitions>
                                 <TextBlock Text="THIS SESSION" Style="{StaticResource SectionLabelStyle}" />
-                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8"><TextBlock x:Name="PhaseText" Text="STANDBY" Style="{StaticResource SectionLabelStyle}" /><TextBlock x:Name="PercentText" Text="0%" FontFamily="Cascadia Mono" FontSize="9.5" FontWeight="SemiBold" /></StackPanel>
+                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8"><TextBlock x:Name="PhaseText" Text="STANDBY" Style="{StaticResource SectionLabelStyle}" /><TextBlock x:Name="PercentText" Text="0%" FontFamily="Cascadia Mono" FontSize="12" FontWeight="SemiBold" /></StackPanel>
                                 <Grid x:Name="SegmentedProgressGrid" Grid.Row="1" Height="4" ColumnSpacing="1" AutomationProperties.Name="Transfer progress" />
                             </Grid>
                             <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource HairlineBrush}"><Grid x:Name="SessionStatsGrid"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel x:Name="CopiedStat" Grid.Column="0" Padding="9,7" Spacing="3">
         <TextBlock Text="COPIED" Style="{StaticResource SectionLabelStyle}" />
-        <TextBlock x:Name="CopiedText" Text="—" FontFamily="Cascadia Mono" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="CopiedCaption" Text="files" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="CopiedText" Text="—" FontFamily="Cascadia Mono" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="CopiedCaption" Text="files" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
     </StackPanel>
 <StackPanel x:Name="SkippedStat" Grid.Column="1" Padding="9,7" Spacing="3">
         <TextBlock Text="ALREADY SAFE" Style="{StaticResource SectionLabelStyle}" />
-        <TextBlock x:Name="SkippedText" Text="—" FontFamily="Cascadia Mono" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="SkippedCaption" Text="re-verified" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="SkippedText" Text="—" FontFamily="Cascadia Mono" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="SkippedCaption" Text="re-verified" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
     </StackPanel>
 <Rectangle x:Name="MetricDivider1" Grid.Column="1" Width="1" HorizontalAlignment="Left" Fill="{ThemeResource HairlineBrush}" />
 <StackPanel x:Name="ProcessedStat" Grid.Column="2" Padding="9,7" Spacing="3">
         <TextBlock Text="PROCESSED" Style="{StaticResource SectionLabelStyle}" />
-        <TextBlock x:Name="ProcessedText" Text="—" FontFamily="Cascadia Mono" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="ProcessedCaption" Text="idle" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ProcessedText" Text="—" FontFamily="Cascadia Mono" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ProcessedCaption" Text="idle" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
     </StackPanel>
 <Rectangle x:Name="MetricDivider2" Grid.Column="2" Width="1" HorizontalAlignment="Left" Fill="{ThemeResource HairlineBrush}" />
 <StackPanel x:Name="ThroughputStat" Grid.Column="3" Padding="9,7" Spacing="3">
         <TextBlock Text="THROUGHPUT" Style="{StaticResource SectionLabelStyle}" />
-        <TextBlock x:Name="ThroughputText" Text="—" FontFamily="Cascadia Mono" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="ThroughputCaption" Text="idle" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ThroughputText" Text="—" FontFamily="Cascadia Mono" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ThroughputCaption" Text="idle" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
     </StackPanel>
 <Rectangle x:Name="MetricDivider3" Grid.Column="3" Width="1" HorizontalAlignment="Left" Fill="{ThemeResource HairlineBrush}" />
 <StackPanel x:Name="ElapsedStat" Grid.Column="4" Padding="9,7" Spacing="3">
         <TextBlock Text="ELAPSED" Style="{StaticResource SectionLabelStyle}" />
-        <TextBlock x:Name="ElapsedText" Text="0:00" FontFamily="Cascadia Mono" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="ElapsedCaption" Text="min:sec" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ElapsedText" Text="0:00" FontFamily="Cascadia Mono" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="ElapsedCaption" Text="min:sec" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
     </StackPanel>
 <Rectangle x:Name="MetricDivider4" Grid.Column="4" Width="1" HorizontalAlignment="Left" Fill="{ThemeResource HairlineBrush}" /></Grid></Border>
                             <Border Grid.Row="2" Background="{ThemeResource PanelFooterBackgroundBrush}" BorderBrush="{ThemeResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="9,7">
                                 <Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="CurrentFileText" Text="Waiting for camera media" FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CurrentFileText" Text="Waiting for camera media" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"><Button x:Name="ReportButton" Content="Report" IsEnabled="False" Style="{StaticResource ShuttleSecondaryButtonStyle}" AutomationProperties.Name="Open transfer report" /><Button x:Name="CancelButton" Content="Cancel" Visibility="Collapsed" Style="{StaticResource ShuttleSecondaryButtonStyle}" AutomationProperties.Name="Cancel transfer" /><Button x:Name="SessionTransferAgainButton" Content="Scan for media" Style="{StaticResource PrimaryTransferButtonStyle}" AutomationProperties.Name="Transfer and verify media" /></StackPanel>
                                 </Grid>
                             </Border>
@@ -195,12 +199,12 @@
                         <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="ACTIVITY" Style="{StaticResource SectionLabelStyle}" /><Rectangle Grid.Column="1" Height="1" Fill="{ThemeResource HairlineBrush}" VerticalAlignment="Center" /></Grid>
                         <ListView x:Name="ActivityList" Height="108" MinHeight="108" Background="Transparent" BorderThickness="0" Padding="0" SelectionMode="None" IsItemClickEnabled="False" IsTabStop="False" AutomationProperties.Name="Recent activity">
                             <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style></ListView.ItemContainerStyle>
-                            <ListView.ItemTemplate><DataTemplate><Border BorderBrush="{ThemeResource HairlineSoftBrush}" BorderThickness="0,0,0,1" Padding="0,4"><TextBlock Text="{Binding}" FontFamily="Cascadia Mono" FontSize="10" Foreground="{ThemeResource TextSecondaryBrush}" TextWrapping="Wrap" /></Border></DataTemplate></ListView.ItemTemplate>
+                            <ListView.ItemTemplate><DataTemplate><Border BorderBrush="{ThemeResource HairlineSoftBrush}" BorderThickness="0,0,0,1" Padding="0,4"><TextBlock Text="{Binding}" FontFamily="Cascadia Mono" FontSize="12.5" Foreground="{ThemeResource TextSecondaryBrush}" TextWrapping="Wrap" /></Border></DataTemplate></ListView.ItemTemplate>
                         </ListView>
                     </StackPanel>
                     <Border Grid.Row="4" Style="{StaticResource PanelBorderStyle}" Padding="9,8" AutomationProperties.Name="Erase card controls">
                         <Grid x:Name="EraseGrid" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="EraseActionColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <StackPanel Spacing="3"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Erase card" FontSize="11.5" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" /><Border x:Name="EraseLockedBadge" Style="{StaticResource BadgeBorderStyle}" Padding="4,2"><TextBlock Text="LOCKED" FontFamily="Cascadia Mono" FontSize="9" CharacterSpacing="110" Foreground="{ThemeResource TextMutedBrush}" /></Border><Border x:Name="EraseUnlockedBadge" Style="{StaticResource BadgeBorderStyle}" Padding="4,2" BorderBrush="{ThemeResource SpeedRedBrush}" Visibility="Collapsed"><TextBlock Text="UNLOCKED" FontFamily="Cascadia Mono" FontSize="9" CharacterSpacing="110" Foreground="{ThemeResource SpeedRedBrush}" /></Border></StackPanel><TextBlock x:Name="WipeDescriptionText" Text="Locked until every remaining camera file has a verified destination copy." FontFamily="Cascadia Mono" FontSize="9.5" Foreground="{ThemeResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <StackPanel Spacing="3"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Erase card" FontSize="14.5" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" /><Border x:Name="EraseLockedBadge" Style="{StaticResource BadgeBorderStyle}" Padding="4,2"><TextBlock Text="LOCKED" FontFamily="Cascadia Mono" FontSize="11" CharacterSpacing="110" Foreground="{ThemeResource TextMutedBrush}" /></Border><Border x:Name="EraseUnlockedBadge" Style="{StaticResource BadgeBorderStyle}" Padding="4,2" BorderBrush="{ThemeResource SpeedRedBrush}" Visibility="Collapsed"><TextBlock Text="UNLOCKED" FontFamily="Cascadia Mono" FontSize="11" CharacterSpacing="110" Foreground="{ThemeResource SpeedRedBrush}" /></Border></StackPanel><TextBlock x:Name="WipeDescriptionText" Text="Locked until every remaining camera file has a verified destination copy." FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" /></StackPanel>
                             <Button x:Name="WipeButton" Grid.Column="1" Content="Erase everything on card" IsEnabled="False" Style="{StaticResource ShuttleDestructiveButtonStyle}" VerticalAlignment="Center" AutomationProperties.Name="Erase everything on card" />
                         </Grid>
                     </Border>

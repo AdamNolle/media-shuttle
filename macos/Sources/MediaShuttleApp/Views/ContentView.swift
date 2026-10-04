@@ -12,7 +12,7 @@ struct ContentView: View {
             Hairline()
             HStack(spacing: 0) {
                 SourcePanel(model: model)
-                    .frame(width: 216)
+                    .frame(width: 280)
                 Rectangle()
                     .fill(Theme.hairline)
                     .frame(width: 1)
@@ -31,7 +31,7 @@ struct ContentView: View {
         // Draw through the hidden title bar so the wordmark sits on the same
         // row as the traffic lights instead of in a band beneath them.
         .ignoresSafeArea(.container, edges: .top)
-        .frame(minWidth: 940, minHeight: 470)
+        .frame(minWidth: 1_020, minHeight: 620)
         .onAppear {
             AppDelegate.openMainWindow = { openWindow(id: "main") }
         }
@@ -57,7 +57,7 @@ private struct TitleBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AppMark(size: 15)
+            AppMark(size: 20)
 
             Text("MEDIA SHUTTLE")
                 .font(Theme.mono(10.5, .semibold))
@@ -76,7 +76,7 @@ private struct TitleBar: View {
         }
         .padding(.leading, 78)
         .padding(.trailing, 8)
-        .frame(height: 38)
+        .frame(height: 48)
         .background(Theme.chromeBackground)
     }
 }

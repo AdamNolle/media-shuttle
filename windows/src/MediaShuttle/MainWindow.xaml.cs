@@ -22,14 +22,14 @@ public sealed partial class MainWindow : Window
     private const double MinimumActivityHeight = 108;
     private const double MaximumActivityHeight = 460;
     private const double MinimumActivityRowHeight = 129;
-    private const double SidebarWidth = 216;
+    private const double SidebarWidth = 280;
     private const double ColumnGap = 1;
-    private const double PanelPadding = 11;
+    private const double PanelPadding = 20;
     // Stacking the sidebar above the operations column costs it its shape: a panel designed for a
     // 240px column, drawn 700px wide, is mostly gaps. Two columns hold down to the point where the
     // operations side would be narrower than the sidebar itself.
-    private const double NarrowLayoutWidth = 620;
-    private const double StackedActionWidth = 560;
+    private const double NarrowLayoutWidth = 760;
+    private const double StackedActionWidth = 650;
     private const int MaximumActivityLines = 200;
 
     /// <summary>
@@ -298,17 +298,16 @@ public sealed partial class MainWindow : Window
         }
         _appliedLayoutWidth = contentWidth;
 
-        // A ScrollViewer measures its content with the height it can scroll into but the width it
-        // cannot, so MainLayout is centred at its desired width rather than stretched, and has to
-        // be given the width explicitly for anything inside it to reflow with the window.
+        // The ScrollViewer leaves its content width unconstrained, so give the layout the
+        // viewport width explicitly to make every section reflow with the window.
         MainLayout.Width = contentWidth;
 
-        // What the layout is actually drawn at: past the maximum it stays put and centres instead,
-        // so every breakpoint below has to be measured against this, not the window.
-        double width = Math.Min(contentWidth, MainLayout.MaxWidth);
+        // Measure breakpoints against the full width on large displays.
+        double width = contentWidth;
         bool narrow = width < NarrowLayoutWidth;
+        double sidebarWidth = width >= 1600 ? 320 : SidebarWidth;
 
-        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(SidebarWidth);
+        SourceColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(sidebarWidth);
         DividerColumn.Width = narrow ? new GridLength(0) : new GridLength(1);
         OperationsColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         SourceDivider.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
@@ -326,28 +325,28 @@ public sealed partial class MainWindow : Window
         bool iconOnlyTitleBar = width < 520;
         StatusPill.Visibility = compactTitleBar ? Visibility.Collapsed : Visibility.Visible;
         AppNameText.Visibility = iconOnlyTitleBar ? Visibility.Collapsed : Visibility.Visible;
-        AppLogo.Width = 15;
-        AppLogo.Height = 15;
-        AppNameText.FontSize = 10.5;
-        SettingsButton.Width = 22;
-        SettingsButton.Height = 22;
+        AppLogo.Width = 20;
+        AppLogo.Height = 20;
+        AppNameText.FontSize = 13;
+        SettingsButton.Width = 30;
+        SettingsButton.Height = 30;
         SettingsButton.Margin = new Thickness(0);
-        AppHeader.Margin = new Thickness(compactTitleBar ? 10 : 14, 0, 160, 0);
+        AppHeader.Margin = new Thickness(compactTitleBar ? 12 : 20, 0, 160, 0);
 
         // Width the operations column itself is drawn at: the layout less its padding, and less the
         // sidebar and the gap between the columns while the two sit side by side. Everything below
-        // reflows against this rather than the window, which is up to 262px wider.
-        double operationsWidth = width - padding.Left - padding.Right - (narrow ? 0 : SidebarWidth + ColumnGap);
+        // reflows against this rather than the window.
+        double operationsWidth = width - padding.Left - padding.Right - (narrow ? 0 : sidebarWidth + ColumnGap);
         double panelWidth = operationsWidth - PanelPadding * 2;
 
         bool stackActions = operationsWidth < StackedActionWidth;
-        SetActionPlacement(EraseGrid, EraseActionColumn, WipeButton, stackActions, 176, 10);
+        SetActionPlacement(EraseGrid, EraseActionColumn, WipeButton, stackActions, 220, 10);
 
 
         SetSessionStatsColumns(panelWidth switch
         {
-            < 380 => 2,
-            < 620 => 3,
+            < 480 => 2,
+            < 800 => 3,
             _ => 5
         });
 

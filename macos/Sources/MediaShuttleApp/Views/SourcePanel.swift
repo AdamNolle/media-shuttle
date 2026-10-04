@@ -6,16 +6,14 @@ struct SourcePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                SectionLabel("SOURCE")
-                Spacer()
-                Button("Choose…", action: model.chooseSource)
-                    .buttonStyle(ShuttleButtonStyle(kind: .secondary))
-                    .disabled(model.isBusy)
-                    .accessibilityLabel("Choose media source")
-            }
+            SectionLabel("SOURCE")
             sourceSummary
-                .padding(.top, 10)
+                .padding(.top, 14)
+            Button("Open card folder…", action: model.chooseSource)
+                .buttonStyle(ShuttleButtonStyle(kind: .primary, fullWidth: true))
+                .disabled(model.isBusy)
+                .accessibilityLabel("Open camera card folder")
+                .padding(.top, 16)
             if model.selectedSourceURL != nil {
                 Button("Use auto-detect", action: model.useAutomaticSource)
                     .buttonStyle(ShuttleButtonStyle(kind: .secondary, fullWidth: true))
@@ -23,22 +21,22 @@ struct SourcePanel: View {
                     .padding(.top, 8)
             }
 
-            Hairline().padding(.vertical, 12)
+            Hairline().padding(.vertical, 16)
 
             SectionLabel("SOURCE CONTENTS")
             MediaBreakdown(counts: model.mediaCounts)
-                .padding(.top, 10)
+                .padding(.top, 12)
 
-            Hairline().padding(.vertical, 12)
+            Hairline().padding(.vertical, 16)
 
             SectionLabel("DESTINATION")
             destination
-                .padding(.top, 10)
+                .padding(.top, 12)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.sidebarBackground)
         .accessibilityElement(children: .contain)
@@ -56,13 +54,13 @@ struct SourcePanel: View {
     }
 
     private var sourceSummary: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 12) {
             MediaCardIcon(connected: model.currentCard != nil)
-                .frame(width: 38, height: 50)
+                .frame(width: 48, height: 64)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(model.currentCard?.volumeLabel ?? model.selectedSourceURL?.lastPathComponent ?? "No source")
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
 
