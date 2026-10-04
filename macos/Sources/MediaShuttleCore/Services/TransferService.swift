@@ -23,7 +23,11 @@ public actor TransferService {
     ) async throws -> TransferResult {
         let destinationRoot = destinationRoot.standardizedFileURL
         try ensureDestinationOutsideCard(destinationRoot, cardRoot: card.rootURL)
-        try FileManager.default.createDirectory(at: destinationRoot, withIntermediateDirectories: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: destinationRoot.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            throw CocoaError(.fileNoSuchFile)
+        }
         try ensureDestinationOutsideCard(
             destinationRoot.resolvingSymlinksInPath(),
             cardRoot: card.rootURL.resolvingSymlinksInPath()

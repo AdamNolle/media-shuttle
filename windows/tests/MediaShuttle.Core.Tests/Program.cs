@@ -79,6 +79,19 @@ internal static class Program
         var wipe = new WipeService(stateStore, logger);
         var card = new CardInfo(cardRoot, "TEST CARD", 0, 64L * 1024 * 1024, 48L * 1024 * 1024, "Removable");
 
+        string missingDestination = Path.Combine(testRoot, "Removed Camera");
+        bool missingDestinationRejected = false;
+        try
+        {
+            await transfer.TransferAsync(card, missingDestination, false, null, CancellationToken.None);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            missingDestinationRejected = true;
+        }
+        Assert(missingDestinationRejected && !Directory.Exists(missingDestination),
+            "Transfer does not recreate a missing destination");
+
         AppSettings newInstallSettings = await stateStore.LoadSettingsAsync();
         Assert(!newInstallSettings.AutoTransfer, "New installations leave automatic transfer off");
         Assert(newInstallSettings.ShowActivityLog, "New installations show the activity log by default");
@@ -152,6 +165,7 @@ internal static class Program
         // The same rule the other way round: a category the card does hold is still created.
         string otherCardRoot = Path.Combine(testRoot, "OTHER-CARD");
         string otherDestination = Path.Combine(testRoot, "Camera-Other");
+        Directory.CreateDirectory(otherDestination);
         Directory.CreateDirectory(Path.Combine(otherCardRoot, "DCIM", "100MSDCF"));
         await File.WriteAllTextAsync(Path.Combine(otherCardRoot, "DCIM", "100MSDCF", "DSC00002.HEIC"), "heic-one");
         var otherCard = new CardInfo(otherCardRoot, "OTHER CARD", 0, 64L * 1024 * 1024, 48L * 1024 * 1024, "Removable");
@@ -227,6 +241,7 @@ internal static class Program
         string source = Path.Combine(testRoot, "MANUAL-SOURCE");
         string destination = Path.Combine(testRoot, "MANUAL-DESTINATION");
         Directory.CreateDirectory(source);
+        Directory.CreateDirectory(destination);
         string photo = Path.Combine(source, "IMG.JPG");
         await File.WriteAllTextAsync(photo, "selected-folder-photo");
         CardInfo card = CardDetector.GetSelectedSource(source);

@@ -24,7 +24,10 @@ public sealed class TransferService
     {
         destinationRoot = Path.GetFullPath(destinationRoot);
         PathUtilities.EnsureDestinationOutsideSource(destinationRoot, card.RootPath);
-        Directory.CreateDirectory(destinationRoot);
+        if (!Directory.Exists(destinationRoot))
+        {
+            throw new DirectoryNotFoundException($"Destination is missing: {destinationRoot}");
+        }
         CleanupPartials(destinationRoot);
 
         progress?.Report(new OperationProgress(OperationPhase.Scanning, "Scanning card", 0, 0, 0, 0));

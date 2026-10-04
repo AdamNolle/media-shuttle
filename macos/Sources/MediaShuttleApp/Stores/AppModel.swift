@@ -156,7 +156,7 @@ final class AppModel {
         if !settings.destinationPath.isEmpty {
             destinationURL = URL(fileURLWithPath: settings.destinationPath, isDirectory: true).standardizedFileURL
         }
-        prepareDestination()
+        prepareDestination(createIfMissing: settings.destinationPath.isEmpty)
         addActivity("Watcher ready. Mounted-volume identity checks active.")
         await scanCards()
 
@@ -553,6 +553,7 @@ final class AppModel {
         }
         destinationURL = selectedURL
         prepareDestination()
+        guard isDestinationAvailable else { return }
         settings.destinationPath = selectedURL.path
         saveSettings()
         addActivity("Destination changed to \(selectedURL.path)")
@@ -601,12 +602,19 @@ final class AppModel {
         banner = nil
     }
 
-    /// The root only, which is what proves the destination is reachable and writable. The category
-    /// folders belong to a transfer, which creates the ones it has files for — scaffolding all four
-    /// here left empty Photos/Other and Videos folders in a destination nothing had been copied to.
-    private func prepareDestination() {
+    /// Create the default destination once. A missing saved destination stays unavailable until the
+    /// user chooses a folder, so launching at login cannot recreate one they removed.
+    private func prepareDestination(createIfMissing: Bool = false) {
         do {
-            try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+            if createIfMissing {
+                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+            } else {
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: destinationURL.path, isDirectory: &isDirectory),
+                      isDirectory.boolValue else {
+                    throw CocoaError(.fileNoSuchFile)
+                }
+            }
             isDestinationAvailable = true
             settings.destinationPath = destinationURL.path
             Task { try? await stateStore.saveSettings(settings) }

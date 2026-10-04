@@ -517,7 +517,8 @@ public sealed partial class MainWindow : Window
     private async Task InitializeAsync()
     {
         _settings = await _stateStore.LoadSettingsAsync();
-        if (!string.IsNullOrWhiteSpace(_settings.DestinationRoot))
+        bool hasSavedDestination = !string.IsNullOrWhiteSpace(_settings.DestinationRoot);
+        if (hasSavedDestination)
         {
             try
             {
@@ -532,7 +533,17 @@ public sealed partial class MainWindow : Window
         Exception? destinationError = null;
         try
         {
-            EnsureDestinationRoot(_destinationRoot);
+            if (hasSavedDestination)
+            {
+                if (!Directory.Exists(_destinationRoot))
+                {
+                    throw new DirectoryNotFoundException($"Saved destination is missing: {_destinationRoot}");
+                }
+            }
+            else
+            {
+                EnsureDestinationRoot(_destinationRoot);
+            }
         }
         catch (Exception exception) when (IsDestinationException(exception))
         {
@@ -1596,10 +1607,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The root only, which is what proves the destination is reachable and writable. The category
-    /// folders belong to a transfer, which creates the ones it has files for — scaffolding all four
-    /// here left empty Photos\Other and Videos folders sitting in a destination nothing had been
-    /// copied to yet.
+    /// Create the default destination on first use or a folder the user explicitly selected.
+    /// Startup checks a saved destination without recreating one the user removed.
     /// </summary>
     private static void EnsureDestinationRoot(string destinationRoot) =>
         Directory.CreateDirectory(destinationRoot);
@@ -1634,7 +1643,10 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            EnsureDestinationRoot(_destinationRoot);
+            if (!Directory.Exists(_destinationRoot))
+            {
+                throw new DirectoryNotFoundException($"Destination is missing: {_destinationRoot}");
+            }
             Process.Start(new ProcessStartInfo(_destinationRoot) { UseShellExecute = true });
         }
         catch (Exception exception) when (

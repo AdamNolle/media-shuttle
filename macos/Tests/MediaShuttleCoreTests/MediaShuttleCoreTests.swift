@@ -93,6 +93,22 @@ final class MediaShuttleCoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: jpeg.path))
     }
 
+    func testTransferDoesNotRecreateMissingDestination() async throws {
+        let missing = testRoot.appendingPathComponent("Removed Camera", isDirectory: true)
+        let card = try CardDetector.selectedSource(at: cardRoot)
+        let store = try StateStore(rootURL: stateRoot)
+        let logger = try AppLogger(stateRoot: stateRoot)
+        let transfer = TransferService(stateStore: store, logger: logger)
+
+        do {
+            _ = try await transfer.transfer(card: card, destinationRoot: missing, groupByDate: false)
+            XCTFail("Transfer should reject a missing destination")
+        } catch let error as CocoaError {
+            XCTAssertEqual(error.code, .fileNoSuchFile)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
+    }
+
     func testSettingsRoundTripAndCardPresenceBaseline() async throws {
         let store = try StateStore(rootURL: stateRoot)
         var settings = AppSettings()
