@@ -18,6 +18,12 @@ public sealed class WipeService
         CancellationToken cancellationToken)
     {
         ValidateSession(card, session);
+        if (card.DriveType == "Selected folder")
+        {
+            throw new InvalidOperationException("Erase is restricted to camera-card volumes, not selected folders.");
+        }
+        PathUtilities.EnsureNoLinks(card.RootPath);
+        PathUtilities.EnsureDestinationOutsideSource(session.DestinationRoot, card.RootPath);
         string root = Path.GetFullPath(card.RootPath);
         if (!Directory.Exists(root))
         {
@@ -58,6 +64,7 @@ public sealed class WipeService
             // Each of these says what to do about it. "The destination copy changed size" on its own
             // leaves erase locked with nothing the card's owner can act on, and the answer is the
             // same every time: transfer again, which re-verifies the file and records it afresh.
+            PathUtilities.EnsureDestinationOutsideSource(record.DestinationPath, card.RootPath);
             if (!File.Exists(record.DestinationPath))
             {
                 throw new FileNotFoundException(
@@ -96,6 +103,10 @@ public sealed class WipeService
             verifiedFiles++;
         }
 
+        if (!session.IsEligibleForErase(card, currentMedia))
+        {
+            throw new InvalidOperationException("Erase blocked: the card contents or destination copies changed. Transfer again first.");
+        }
         string[] rootEntries = Directory.GetFileSystemEntries(root);
         int totalUserEntries = rootEntries.Count(entry => !MediaClassifier.IsWindowsManagedRootEntry(entry));
         int completedEntries = 0;
@@ -229,6 +240,10 @@ public sealed class WipeService
 
     private static void ValidateSession(CardInfo card, TransferSession session)
     {
+        if (session.Files.Count == 0)
+        {
+            throw new InvalidOperationException("Erase requires a verified transfer containing media files.");
+        }
         if (!session.Status.Equals("Verified", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Erase is available only after a completed verified transfer.");

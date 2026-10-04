@@ -16,7 +16,9 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _instanceMutex = new Mutex(true, "Local\\MediaShuttle.WinUI3", out bool createdNew);
+        string mutexName = MainWindow.IsVisualPreview
+            ? "Local\\MediaShuttle.VisualPreview" : "Local\\MediaShuttle.WinUI3";
+        _instanceMutex = new Mutex(true, mutexName, out bool createdNew);
         if (!createdNew)
         {
             NativeMethods.ActivateExistingWindow("Media Shuttle");
@@ -28,8 +30,10 @@ public partial class App : Application
         {
             bool launchInBackground = Environment.GetCommandLineArgs()
                 .Any(argument => argument.Equals("--background", StringComparison.OrdinalIgnoreCase));
-            _window = new MainWindow(launchInBackground);
-            _window.Activate();
+            var mainWindow = new MainWindow(launchInBackground);
+            _window = mainWindow;
+            if (MainWindow.IsVisualPreview) mainWindow.ShowVisualPreview();
+            else _window.Activate();
         }
         catch (Exception exception)
         {
@@ -57,6 +61,7 @@ public partial class App : Application
             string directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Media Shuttle");
+            if (MainWindow.IsVisualPreview) directory = Path.Combine(Path.GetTempPath(), "MediaShuttle-VisualPreview");
             Directory.CreateDirectory(directory);
             File.WriteAllText(
                 Path.Combine(directory, "startup-crash.log"),

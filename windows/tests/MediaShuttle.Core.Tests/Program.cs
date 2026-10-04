@@ -12,7 +12,8 @@ internal static class Program
         try
         {
             await RunAsync(testRoot);
-            Console.WriteLine($"PASS: {_assertions} assertions covering classification, settings, card-arrival startup safety, verified copy, duplicates, collisions, safety blocking, read-only erase, post-erase verification.");
+            await RunParitySafetyAsync(testRoot);
+            Console.WriteLine($"PASS: {_assertions} assertions covering classification, settings, card arrivals, folder sources, verified copy, date folders, duplicates, collisions, links, cancellation, erase eligibility, and post-erase verification.");
             return 0;
         }
         catch (Exception exception)
@@ -219,6 +220,140 @@ internal static class Program
         Assert(remaining.Length == 1 && Path.GetFileName(remaining[0]) == "System Volume Information", "Only Windows-managed volume folder remains");
         Assert(MediaClassifier.Scan(cardRoot).Count == 0, "Post-erase media scan is empty");
         Assert(await stateStore.LoadLatestVerifiedForCardAsync(card) is null, "Erased session keeps older transfers locked");
+    }
+
+    private static async Task RunParitySafetyAsync(string testRoot)
+    {
+        string source = Path.Combine(testRoot, "MANUAL-SOURCE");
+        string destination = Path.Combine(testRoot, "MANUAL-DESTINATION");
+        Directory.CreateDirectory(source);
+        string photo = Path.Combine(source, "IMG.JPG");
+        await File.WriteAllTextAsync(photo, "selected-folder-photo");
+        CardInfo card = CardDetector.GetSelectedSource(source);
+        Assert(card.DriveType == "Selected folder", "Ordinary source folders are identified as folders");
+        Assert(!CardDetector.IsCameraCardVolume(source), "Ordinary source folders are never erasable cards");
+        Assert(!CardDetector.IsCameraCardVolume(Path.GetPathRoot(Environment.SystemDirectory)!),
+            "System volume is never an erasable camera card");
+        var store = new StateStore(Path.Combine(testRoot, "PARITY-STATE"));
+        var logger = new AppLogger(store.RootPath);
+        var transfer = new TransferService(store, logger);
+        var wipe = new WipeService(store, logger);
+        await ExpectBlockedAsync(() => transfer.TransferAsync(card, source, false, null, CancellationToken.None),
+            "Transfer rejects a destination equal to the source");
+        string nestedDestination = Path.Combine(source, "BACKUP");
+        await ExpectBlockedAsync(() => transfer.TransferAsync(card, nestedDestination, false, null, CancellationToken.None),
+            "Transfer rejects a destination inside the source");
+        Assert(!Directory.Exists(nestedDestination), "Unsafe destination is rejected before creating files");
+        var updates = new List<OperationProgress>();
+        TransferResult copied = await transfer.TransferAsync(card, destination, true,
+            new InlineProgress(updates.Add), CancellationToken.None);
+        Assert(copied.Session.CopiedCount == 1, "Selected folders transfer without a camera layout");
+        string date = File.GetLastWriteTimeUtc(photo).ToLocalTime().ToString("yyyy-MM-dd");
+        string destinationPhoto = Path.Combine(destination, "Photos", "JPEGs", date, "IMG.JPG");
+        Assert(File.Exists(destinationPhoto), "Date grouping uses the source modification date");
+        Assert(updates.Where(update => update.CurrentSourcePath.Length > 0)
+            .All(update => update.CurrentDestinationFolder == Path.Combine("Photos", "JPEGs", date)),
+            "Progress labels include the actual date folder");
+        Assert(copied.Session.IsEligibleForErase(card, MediaClassifier.Scan(source)),
+            "Unchanged source and destination match the saved transfer");
+        Assert(!copied.Session.IsEligibleForErase(card with { VolumeSerial = card.VolumeSerial ^ 1 }, MediaClassifier.Scan(source)),
+            "A different volume identity invalidates erase eligibility");
+        copied.Session.Files.Add(copied.Session.Files[0]);
+        Assert(!copied.Session.IsEligibleForErase(card, MediaClassifier.Scan(source)),
+            "Duplicate source records invalidate erase eligibility");
+        copied.Session.Files.RemoveAt(1);
+        await ExpectBlockedAsync(() => wipe.WipeEverythingAsync(card, copied.Session, null, CancellationToken.None),
+            "Core erase refuses a manually selected folder after a verified transfer");
+        Assert(File.Exists(photo), "Selected-folder erase refusal preserves original media");
+
+        CardInfo testCard = card with { DriveType = "Removable" };
+        File.Move(photo, photo + ".held");
+        try
+        {
+            Assert(!copied.Session.IsEligibleForErase(card, []), "An empty source invalidates the saved transfer");
+            await ExpectBlockedAsync(() => wipe.WipeEverythingAsync(testCard, copied.Session, null, CancellationToken.None),
+                "Core erase blocks a card whose verified media has been removed");
+        }
+        finally { File.Move(photo + ".held", photo); }
+        await File.WriteAllTextAsync(photo, "resized-source");
+        Assert(!copied.Session.IsEligibleForErase(card, MediaClassifier.Scan(source)),
+            "Changed source size locks erase eligibility");
+        await File.WriteAllTextAsync(photo, "selected-folder-photo");
+        await File.WriteAllTextAsync(destinationPhoto, "tampered-destination");
+        Assert(!copied.Session.IsEligibleForErase(card, MediaClassifier.Scan(source)),
+            "Changed backup size locks erase eligibility");
+        bool rejectedTamper = false;
+        try { await wipe.WipeEverythingAsync(testCard, copied.Session, null, CancellationToken.None); }
+        catch (IOException) { rejectedTamper = true; }
+        Assert(rejectedTamper && File.Exists(photo), "Altered destination blocks erase and preserves the card");
+        File.Delete(destinationPhoto);
+        Assert(!copied.Session.IsEligibleForErase(card, MediaClassifier.Scan(source)),
+            "Missing backup locks erase eligibility");
+        bool rejectedMissing = false;
+        try { await wipe.WipeEverythingAsync(testCard, copied.Session, null, CancellationToken.None); }
+        catch (FileNotFoundException) { rejectedMissing = true; }
+        Assert(rejectedMissing && File.Exists(photo), "Missing destination blocks erase and preserves the card");
+
+        string nestedExcluded = Path.Combine(source, "NESTED", "System Volume Information");
+        Directory.CreateDirectory(nestedExcluded);
+        await File.WriteAllTextAsync(Path.Combine(nestedExcluded, "NOTES.PDF"), "user-content");
+        Assert(MediaClassifier.ScanCard(source).UnverifiableFiles.Count == 1,
+            "System-named folders nested in user content cannot hide unverified files");
+        File.Delete(Path.Combine(nestedExcluded, "NOTES.PDF"));
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        bool rejectedCancellation = false;
+        try { await transfer.TransferAsync(card, destination, false, null, cancelled.Token); }
+        catch (OperationCanceledException) { rejectedCancellation = true; }
+        Assert(rejectedCancellation && File.Exists(photo), "Cancelled transfers preserve the source");
+        Assert(!Directory.EnumerateFiles(destination, "*.partial-*", SearchOption.AllDirectories).Any(),
+            "Cancelled transfers leave no partial copies");
+
+        string linkedDestination = Path.Combine(testRoot, "LINKED-DESTINATION");
+        CreateJunction(linkedDestination, source);
+        try
+        {
+            await ExpectBlockedAsync(() => transfer.TransferAsync(card, linkedDestination, false, null, CancellationToken.None),
+                "Transfer rejects a destination junction pointing to the source");
+        }
+        finally { Directory.Delete(linkedDestination); }
+
+        string linkedCategory = Path.Combine(destination, "Photos", "RAWs");
+        CreateJunction(linkedCategory, source);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(source, "IMG.ARW"), "raw-photo");
+            await ExpectBlockedAsync(() => transfer.TransferAsync(card, destination, false, null, CancellationToken.None),
+                "Transfer rejects a category junction pointing to the source");
+            Assert(!File.Exists(Path.Combine(source, "IMG (2).ARW")), "Rejected category junction creates no source collisions");
+        }
+        finally { Directory.Delete(linkedCategory); }
+    }
+
+    private sealed class InlineProgress(Action<OperationProgress> report) : IProgress<OperationProgress>
+    {
+        public void Report(OperationProgress value) => report(value);
+    }
+
+    private static async Task ExpectBlockedAsync(Func<Task> action, string message)
+    {
+        bool blocked = false;
+        try { await action(); }
+        catch (InvalidOperationException) { blocked = true; }
+        Assert(blocked, message);
+    }
+
+    private static void CreateJunction(string link, string target)
+    {
+        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            "cmd.exe", $"/c mklink /J \"{link}\" \"{target}\"")
+        {
+            UseShellExecute = false, CreateNoWindow = true,
+            RedirectStandardOutput = true, RedirectStandardError = true
+        })!;
+        process.WaitForExit();
+        if (process.ExitCode != 0) throw new IOException("Could not create test junction: " + process.StandardError.ReadToEnd());
     }
 
     private static void Assert(bool condition, string message)

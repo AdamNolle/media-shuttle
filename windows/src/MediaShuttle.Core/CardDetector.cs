@@ -5,6 +5,47 @@ namespace MediaShuttle.Core;
 
 public static class CardDetector
 {
+    public static CardInfo GetSelectedSource(string path)
+    {
+        string root = Path.GetFullPath(path);
+        PathUtilities.EnsureNoLinks(root);
+        if (!Directory.Exists(root))
+        {
+            throw new DirectoryNotFoundException("The selected source folder is unavailable.");
+        }
+        string volumeRoot = Path.GetPathRoot(root)!;
+        bool isVolumeRoot = Path.TrimEndingDirectorySeparator(root).Equals(
+            Path.TrimEndingDirectorySeparator(volumeRoot), StringComparison.OrdinalIgnoreCase);
+        if (isVolumeRoot && volumeRoot.Equals(
+                Path.GetPathRoot(Environment.SystemDirectory), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Choose a media folder or a camera card, rather than the system drive.");
+        }
+        if (!NativeMethods.GetDiskFreeSpaceEx(root, out ulong available, out ulong total, out _))
+        {
+            throw new IOException("The selected source volume is unavailable.");
+        }
+        var drive = new DriveInfo(volumeRoot);
+        return new CardInfo(root,
+            isVolumeRoot ? (string.IsNullOrWhiteSpace(drive.VolumeLabel) ? "CAMERA MEDIA" : drive.VolumeLabel)
+                : Path.GetFileName(Path.TrimEndingDirectorySeparator(root)),
+            GetVolumeSerial(root), (long)total, (long)available,
+            isVolumeRoot ? "Selected volume" : "Selected folder");
+    }
+
+    public static bool IsCameraCardVolume(string path)
+    {
+        string root = Path.GetFullPath(path);
+        string volumeRoot = Path.GetPathRoot(root)!;
+        return Path.TrimEndingDirectorySeparator(root).Equals(
+                Path.TrimEndingDirectorySeparator(volumeRoot), StringComparison.OrdinalIgnoreCase) &&
+            !volumeRoot.Equals(Path.GetPathRoot(Environment.SystemDirectory), StringComparison.OrdinalIgnoreCase) &&
+            new DriveInfo(volumeRoot).DriveType is DriveType.Removable or DriveType.Fixed &&
+            (Directory.Exists(Path.Combine(root, "DCIM")) ||
+             Directory.Exists(Path.Combine(root, "M4ROOT")) ||
+             Directory.Exists(Path.Combine(root, "PRIVATE")));
+    }
+
     public static IReadOnlyList<CardInfo> GetCandidates(string destinationRoot)
     {
         string destinationDrive = Path.GetPathRoot(Path.GetFullPath(destinationRoot)) ?? string.Empty;
@@ -52,7 +93,7 @@ public static class CardDetector
             }
         }
 
-        return candidates;
+        return candidates.OrderBy(card => card.VolumeLabel, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public static uint GetVolumeSerial(string rootPath)

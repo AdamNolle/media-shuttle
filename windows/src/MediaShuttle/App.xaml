@@ -22,7 +22,7 @@
                     <SolidColorBrush x:Key="TextLabelBrush" Color="#FF949AA1" />
                     <SolidColorBrush x:Key="HairlineBrush" Color="#1FFFFFFF" />
                     <SolidColorBrush x:Key="HairlineSoftBrush" Color="#12FFFFFF" />
-                    <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFFF625A" />
+                    <SolidColorBrush x:Key="SpeedRedBrush" Color="#FFFF6A5E" />
                     <SolidColorBrush x:Key="SpeedRedFillBrush" Color="#FFD33B34" />
                     <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#FF1A1A1D" />
                     <SolidColorBrush x:Key="PrimaryActionBackground" Color="#FFD6DADE" />
@@ -40,9 +40,6 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF202420" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF56B870" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FF0E1C12" />
-                    <SolidColorBrush x:Key="ShuttleCardBrush" Color="#FF3E4450" />
-                    <SolidColorBrush x:Key="ShuttleTyreBrush" Color="#FF2F353F" />
-                    <SolidColorBrush x:Key="ShuttleYellowBrush" Color="#FFFFD016" />
                     <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FFCFD3D8" />
                     <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF8B9198" />
                     <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF5C6167" />
@@ -80,22 +77,43 @@
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFF2F5F2" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF287A40" />
                     <SolidColorBrush x:Key="InfoBarSuccessSeverityIconForeground" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="ShuttleCardBrush" Color="#FF14161B" />
-                    <SolidColorBrush x:Key="ShuttleTyreBrush" Color="#FF0E1015" />
-                    <SolidColorBrush x:Key="ShuttleYellowBrush" Color="#FFF0B800" />
                     <SolidColorBrush x:Key="MediaKindJpegBrush" Color="#FF3F434A" />
                     <SolidColorBrush x:Key="MediaKindRawBrush" Color="#FF6B7178" />
                     <SolidColorBrush x:Key="MediaKindOtherBrush" Color="#FF9AA0A6" />
                     <SolidColorBrush x:Key="MediaKindVideoBrush" Color="#FFC7CCD1" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
-            <SolidColorBrush x:Key="ShuttleGlassBrush" Color="#FF12151C" />
-            <SolidColorBrush x:Key="ShuttleRimBrush" Color="#FFC9CED6" />
             <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FFD33B34" />
             <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#FFC9342D" />
             <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#FFB92D27" />
             <SolidColorBrush x:Key="AccentFillColorDisabledBrush" Color="#667F7F7F" />
-            <Style x:Key="PrimaryTransferButtonStyle" TargetType="Button">
+            <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+
+            <Style x:Key="ShuttleSecondaryButtonStyle" TargetType="Button">
+                <Setter Property="FontFamily" Value="Cascadia Mono" /><Setter Property="FontSize" Value="10.5" /><Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Padding" Value="10,2" /><Setter Property="MinHeight" Value="22" /><Setter Property="Height" Value="22" /><Setter Property="CornerRadius" Value="0" /><Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Foreground" Value="{ThemeResource TextBrightBrush}" /><Setter Property="Background" Value="{ThemeResource PanelBackgroundBrush}" /><Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                    <Grid x:Name="ButtonRoot" Background="Transparent">
+                        <ContentPresenter x:Name="Presenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <Border x:Name="HoverOverlay" Background="{ThemeResource TextPrimaryBrush}" Opacity="0" IsHitTestVisible="False" />
+                        <VisualStateManager.VisualStateGroups><VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" /><VisualState x:Name="PointerOver"><VisualState.Setters><Setter Target="HoverOverlay.Opacity" Value="0.07" /></VisualState.Setters></VisualState>
+                            <VisualState x:Name="Pressed"><VisualState.Setters><Setter Target="HoverOverlay.Opacity" Value="0.12" /></VisualState.Setters></VisualState>
+                            <VisualState x:Name="Disabled"><VisualState.Setters><Setter Target="ButtonRoot.Opacity" Value="0.35" /></VisualState.Setters></VisualState>
+                        </VisualStateGroup></VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate></Setter.Value></Setter>
+            </Style>
+            <Style x:Key="ShuttleDestructiveButtonStyle" TargetType="Button" BasedOn="{StaticResource ShuttleSecondaryButtonStyle}">
+                <Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Foreground" Value="{ThemeResource SpeedRedBrush}" /><Setter Property="BorderBrush" Value="{ThemeResource SpeedRedBrush}" />
+            </Style>
+            <Style x:Key="ChromeIconButtonStyle" TargetType="Button" BasedOn="{StaticResource ShuttleSecondaryButtonStyle}">
+                <Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Foreground" Value="{ThemeResource TextMutedBrush}" />
+            </Style>
+            <Style x:Key="PrimaryTransferButtonStyle" TargetType="Button" BasedOn="{StaticResource ShuttleSecondaryButtonStyle}">
+                <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Foreground" Value="{ThemeResource PrimaryActionForeground}" />
                 <Setter Property="Background" Value="{ThemeResource PrimaryActionBackground}" />
                 <Setter Property="BackgroundSizing" Value="OuterBorderEdge" />
@@ -157,16 +175,73 @@
                 </Setter>
             </Style>
             <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="10" />
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="9.5" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="115" />
+                <Setter Property="CharacterSpacing" Value="137" />
                 <Setter Property="Foreground" Value="{ThemeResource TextLabelBrush}" />
             </Style>
-            <Style x:Key="MetricValueStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="22" />
-                <Setter Property="FontWeight" Value="SemiBold" />
+            <Style x:Key="ShuttleFlyoutStyle" TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="Background" Value="{ThemeResource PanelBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Padding" Value="14" />
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="10.5" />
+            </Style>
+            <Style x:Key="ShuttleComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="10.5" />
+                <Setter Property="MinHeight" Value="28" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Background" Value="{ThemeResource PanelFooterBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextBrightBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
+                <Setter Property="CornerRadius" Value="0" />
+            </Style>
+            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="10.5" />
+                <Setter Property="Foreground" Value="{ThemeResource TextBrightBrush}" />
+                <Setter Property="CornerRadius" Value="0" />
+            </Style>
+            <Style x:Key="ShuttleToggleStyle" TargetType="ToggleSwitch" BasedOn="{StaticResource DefaultToggleSwitchStyle}">
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="10.5" />
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}" />
+                <Setter Property="HeaderTemplate"><Setter.Value><DataTemplate>
+                    <TextBlock Text="{Binding}" FontFamily="Cascadia Mono" FontSize="10.5" FontWeight="Medium" Foreground="{ThemeResource TextBrightBrush}" />
+                </DataTemplate></Setter.Value></Setter>
+            </Style>
+            <Style x:Key="ShuttleTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource DefaultTextBoxStyle}">
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Background" Value="{ThemeResource PanelFooterBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
+                <Setter Property="CornerRadius" Value="0" />
+            </Style>
+            <Style x:Key="ShuttleCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource DefaultCheckBoxStyle}">
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}" />
+            </Style>
+            <Style x:Key="ShuttleDialogStyle" TargetType="ContentDialog" BasedOn="{StaticResource DefaultContentDialogStyle}">
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="Background" Value="{ThemeResource PanelBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource HairlineBrush}" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="FontFamily" Value="Cascadia Mono" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="PrimaryButtonStyle" Value="{StaticResource ShuttleDestructiveButtonStyle}" />
+                <Setter Property="CloseButtonStyle" Value="{StaticResource ShuttleSecondaryButtonStyle}" />
+                <Setter Property="TitleTemplate"><Setter.Value><DataTemplate>
+                    <TextBlock Text="{Binding}" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                </DataTemplate></Setter.Value></Setter>
             </Style>
             <Style x:Key="PanelBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource PanelBackgroundBrush}" />
@@ -179,12 +254,6 @@
                 <Setter Property="CornerRadius" Value="0" />
                 <Setter Property="Padding" Value="5,2" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-            </Style>
-            <Style x:Key="BadgeTextStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="10" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="70" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

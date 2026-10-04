@@ -37,6 +37,10 @@ internal sealed class TrayIconService : IDisposable
     private readonly Action _open;
     private readonly Action _openFolder;
     private readonly Action _exit;
+    private readonly Action _chooseSource;
+    private readonly Action _transfer;
+    private readonly Func<bool> _canChooseSource;
+    private readonly Func<bool> _canTransfer;
     private readonly SubclassProcedure _subclassProcedure;
     private readonly UIntPtr _subclassId = new(0x4D534855);
     private NotifyIconData _data;
@@ -48,12 +52,20 @@ internal sealed class TrayIconService : IDisposable
         string iconPath,
         Action open,
         Action openFolder,
-        Action exit)
+        Action exit,
+        Action chooseSource,
+        Action transfer,
+        Func<bool> canChooseSource,
+        Func<bool> canTransfer)
     {
         _windowHandle = windowHandle;
         _open = open;
         _openFolder = openFolder;
         _exit = exit;
+        _chooseSource = chooseSource;
+        _transfer = transfer;
+        _canChooseSource = canChooseSource;
+        _canTransfer = canTransfer;
         _subclassProcedure = WindowSubclass;
         _iconHandle = LoadImage(IntPtr.Zero, iconPath, ImageIcon, 32, 32, LrLoadFromFile);
         if (_iconHandle == IntPtr.Zero)
@@ -129,6 +141,8 @@ internal sealed class TrayIconService : IDisposable
         try
         {
             AppendMenu(menu, MfString, 1, "Open Media Shuttle");
+            AppendMenu(menu, _canChooseSource() ? MfString : 1u, 4, "Choose source…");
+            AppendMenu(menu, _canTransfer() ? MfString : 1u, 5, "Transfer and verify");
             AppendMenu(menu, MfString, 2, "Open destination folder");
             AppendMenu(menu, MfSeparator, 0, null);
             AppendMenu(menu, MfString, 3, "Exit");
@@ -156,6 +170,12 @@ internal sealed class TrayIconService : IDisposable
                     break;
                 case 3:
                     _exit();
+                    break;
+                case 4:
+                    _chooseSource();
+                    break;
+                case 5:
+                    _transfer();
                     break;
             }
         }

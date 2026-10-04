@@ -170,7 +170,7 @@ public static class MediaClassifier
     private static readonly EnumerationOptions CardEnumerationOptions = new()
     {
         AttributesToSkip = 0,
-        IgnoreInaccessible = true,
+        IgnoreInaccessible = false,
         RecurseSubdirectories = false,
         ReturnSpecialDirectories = false
     };
@@ -184,35 +184,27 @@ public static class MediaClassifier
     private static IEnumerable<FileInfo> EnumerateCardFiles(string rootPath)
     {
         var pending = new Stack<DirectoryInfo>();
-        pending.Push(new DirectoryInfo(Path.GetFullPath(rootPath)));
+        string normalizedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootPath));
+        pending.Push(new DirectoryInfo(normalizedRoot));
 
         while (pending.Count > 0)
         {
             DirectoryInfo directory = pending.Pop();
             FileInfo[] files;
             DirectoryInfo[] directories;
-            try
-            {
-                files = directory.GetFiles("*", CardEnumerationOptions);
-                directories = directory.GetDirectories("*", CardEnumerationOptions);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                continue;
-            }
-            catch (IOException)
-            {
-                continue;
-            }
+            files = directory.GetFiles("*", CardEnumerationOptions);
+            directories = directory.GetDirectories("*", CardEnumerationOptions);
 
             foreach (FileInfo file in files)
             {
+                if ((file.Attributes & FileAttributes.ReparsePoint) != 0) continue;
                 yield return file;
             }
 
             foreach (DirectoryInfo child in directories)
             {
-                if (ScanExcludedDirectories.Contains(child.Name) || IsReparsePoint(child))
+                if ((Path.TrimEndingDirectorySeparator(directory.FullName).Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) &&
+                     ScanExcludedDirectories.Contains(child.Name)) || IsReparsePoint(child))
                 {
                     continue;
                 }
@@ -221,21 +213,8 @@ public static class MediaClassifier
         }
     }
 
-    private static bool IsReparsePoint(DirectoryInfo directory)
-    {
-        try
-        {
-            return (directory.Attributes & FileAttributes.ReparsePoint) != 0;
-        }
-        catch (IOException)
-        {
-            return true;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return true;
-        }
-    }
+    private static bool IsReparsePoint(DirectoryInfo directory) =>
+        (directory.Attributes & FileAttributes.ReparsePoint) != 0;
 
     public static string DestinationFolder(MediaKind kind) => kind switch
     {

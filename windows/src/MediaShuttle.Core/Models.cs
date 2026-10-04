@@ -71,6 +71,33 @@ public sealed class TransferSession
     public int SkippedCount { get; set; }
     public int ErasedFileCount { get; set; }
     public List<TransferRecord> Files { get; set; } = [];
+
+    public bool IsEligibleForErase(CardInfo card, IReadOnlyList<MediaItem> media)
+    {
+        try
+        {
+            if (!Status.Equals("Verified", StringComparison.OrdinalIgnoreCase) ||
+                !Path.TrimEndingDirectorySeparator(Path.GetFullPath(SourceRoot)).Equals(
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(card.RootPath)), StringComparison.OrdinalIgnoreCase) ||
+                SourceVolumeSerial != card.VolumeSerial || Files.Count == 0 || Files.Count != media.Count)
+                return false;
+            var records = new Dictionary<string, TransferRecord>(StringComparer.OrdinalIgnoreCase);
+            foreach (TransferRecord record in Files)
+                if (!records.TryAdd(Path.GetFullPath(record.SourcePath), record)) return false;
+            foreach (MediaItem item in media)
+            {
+                if (!records.TryGetValue(Path.GetFullPath(item.SourcePath), out TransferRecord? record) ||
+                    record.Size != item.Size || !File.Exists(record.DestinationPath) ||
+                    new FileInfo(record.DestinationPath).Length != record.Size) return false;
+                PathUtilities.EnsureDestinationOutsideSource(record.DestinationPath, card.RootPath);
+            }
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
 }
 
 public sealed record OperationProgress(

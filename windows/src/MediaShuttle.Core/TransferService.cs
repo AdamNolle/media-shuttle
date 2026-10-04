@@ -23,6 +23,7 @@ public sealed class TransferService
         CancellationToken cancellationToken)
     {
         destinationRoot = Path.GetFullPath(destinationRoot);
+        PathUtilities.EnsureDestinationOutsideSource(destinationRoot, card.RootPath);
         Directory.CreateDirectory(destinationRoot);
         CleanupPartials(destinationRoot);
 
@@ -61,9 +62,11 @@ public sealed class TransferService
             {
                 folder = Path.Combine(folder, item.LastWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd"));
             }
+            PathUtilities.EnsureNoLinks(folder);
             Directory.CreateDirectory(folder);
 
             string destinationPath = Path.Combine(folder, item.FileName);
+            PathUtilities.EnsureNoLinks(destinationPath);
             string hash;
             bool skipped = false;
             if (File.Exists(destinationPath) && new FileInfo(destinationPath).Length == item.Size)
@@ -78,7 +81,7 @@ public sealed class TransferService
                     session.CopiedCount,
                     session.SkippedCount,
                     item.SourcePath,
-                    MediaClassifier.DestinationFolder(item.Kind)));
+                    PathUtilities.RelativeDestinationFolder(session.DestinationRoot, destinationPath)));
                 string sourceHash = await FileHasher.Sha256Async(item.SourcePath, cancellationToken).ConfigureAwait(false);
                 string destinationHash = await FileHasher.Sha256Async(destinationPath, cancellationToken).ConfigureAwait(false);
                 if (sourceHash.Equals(destinationHash, StringComparison.OrdinalIgnoreCase))
@@ -139,7 +142,7 @@ public sealed class TransferService
                 session.CopiedCount,
                 session.SkippedCount,
                 item.SourcePath,
-                MediaClassifier.DestinationFolder(item.Kind)));
+                PathUtilities.RelativeDestinationFolder(session.DestinationRoot, destinationPath)));
             session.Files.Add(new TransferRecord
             {
                 SourcePath = item.SourcePath,
@@ -220,7 +223,7 @@ public sealed class TransferService
                         session.CopiedCount,
                         session.SkippedCount,
                         item.SourcePath,
-                        MediaClassifier.DestinationFolder(item.Kind)));
+                        PathUtilities.RelativeDestinationFolder(session.DestinationRoot, destinationPath)));
                 }
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -248,7 +251,7 @@ public sealed class TransferService
                 session.CopiedCount,
                 session.SkippedCount,
                 item.SourcePath,
-                MediaClassifier.DestinationFolder(item.Kind)));
+                PathUtilities.RelativeDestinationFolder(session.DestinationRoot, destinationPath)));
             string destinationHash = await FileHasher.Sha256Async(temporaryPath, cancellationToken).ConfigureAwait(false);
             if (!sourceHash.Equals(destinationHash, StringComparison.OrdinalIgnoreCase))
             {
@@ -291,7 +294,9 @@ public sealed class TransferService
     {
         foreach (MediaKind kind in media.Select(item => item.Kind).Distinct())
         {
-            Directory.CreateDirectory(Path.Combine(destinationRoot, MediaClassifier.DestinationFolder(kind)));
+            string folder = Path.Combine(destinationRoot, MediaClassifier.DestinationFolder(kind));
+            PathUtilities.EnsureNoLinks(folder);
+            Directory.CreateDirectory(folder);
         }
     }
 
@@ -303,7 +308,7 @@ public sealed class TransferService
         {
             RecurseSubdirectories = true,
             IgnoreInaccessible = true,
-            AttributesToSkip = 0
+            AttributesToSkip = FileAttributes.ReparsePoint
         };
         foreach (string partial in Directory.EnumerateFiles(destinationRoot, $"*{PartialMarker}*", options))
         {
