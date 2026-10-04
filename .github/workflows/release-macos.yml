@@ -5,46 +5,56 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, media-shuttle-macos]
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Add Homebrew tools to PATH
+        run: echo /opt/homebrew/bin >> "$GITHUB_PATH"
 
       - name: Run safety tests
         run: swift test --package-path macos --scratch-path "$RUNNER_TEMP/media-shuttle-tests"
 
       - name: Build universal macOS app
-        env:
-          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${VERSION#v}"
+          VERSION="${RELEASE_TAG#v}"
           ./macos/scripts/package-macos.sh "$VERSION"
 
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           ASSETS=(
             "macos/artifacts/MediaShuttle-v$VERSION-macOS-universal.dmg"
             "macos/artifacts/SHA256SUMS-macos.txt"
           )
 
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            if gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' \
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
               | rg --fixed-strings --line-regexp "MediaShuttle-v$VERSION-macOS-universal.dmg"; then
               echo "Preserving the existing macOS release artifact."
               exit 0
             fi
-            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+            gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+            gh release create "$RELEASE_TAG" "${ASSETS[@]}" \
               --verify-tag \
               --generate-notes \
               --title "Media Shuttle $VERSION"

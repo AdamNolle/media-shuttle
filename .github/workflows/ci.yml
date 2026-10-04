@@ -16,7 +16,7 @@ env:
 
 jobs:
   choose-windows-runner:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64, personal-ci]
     outputs:
       runs_on: ${{ steps.select.outputs.runs_on }}
       self_hosted: ${{ steps.select.outputs.self_hosted }}
@@ -24,25 +24,19 @@ jobs:
       - name: Select a safe Windows runner
         id: select
         env:
-          GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-        shell: bash
+        shell: pwsh
         run: |
-          if [[ "$EVENT_NAME" == "pull_request" && "$HEAD_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
-            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
-            echo 'self_hosted=false' >> "$GITHUB_OUTPUT"
-            echo "Fork pull request: using an isolated GitHub-hosted runner."
-          elif gh api "repos/$GITHUB_REPOSITORY/actions/runners" | jq -e \
-            '.runners[] | select(.status == "online" and .os == "Windows" and any(.labels[]; .name == "personal-ci"))' >/dev/null; then
-            echo 'runs_on=["self-hosted","Windows","X64","personal-ci"]' >> "$GITHUB_OUTPUT"
-            echo 'self_hosted=true' >> "$GITHUB_OUTPUT"
-            echo "Using the Adlon Windows runner."
-          else
-            echo 'runs_on=["windows-latest"]' >> "$GITHUB_OUTPUT"
-            echo 'self_hosted=false' >> "$GITHUB_OUTPUT"
-            echo "Adlon is offline; using GitHub-hosted Windows."
-          fi
+          if ($env:EVENT_NAME -eq 'pull_request' -and $env:HEAD_REPOSITORY -ne $env:GITHUB_REPOSITORY) {
+            'runs_on=["windows-latest"]' | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            'self_hosted=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host 'Fork pull request: using an isolated GitHub-hosted runner.'
+          } else {
+            'runs_on=["self-hosted","Windows","X64","personal-ci"]' | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            'self_hosted=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host 'Using the Adlon Windows runner.'
+          }
 
   windows:
     name: Windows build and core tests
@@ -82,7 +76,7 @@ jobs:
 
   macos:
     name: macOS core tests
-    runs-on: macos-15
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && fromJSON('["macos-15"]') || fromJSON('["self-hosted","macOS","media-shuttle-macos"]') }}
     timeout-minutes: 20
     steps:
       - name: Check out source
