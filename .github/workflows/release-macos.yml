@@ -25,6 +25,19 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
+      - name: Select full Xcode
+        run: |
+          developer_dir=/Applications/Xcode.app/Contents/Developer
+          if [[ ! -x "$developer_dir/usr/bin/xcodebuild" ]]; then
+            developer_dir="$(find /Applications -maxdepth 3 -path '*/Xcode*.app/Contents/Developer' -type d -print -quit)"
+          fi
+          if [[ -z "$developer_dir" || ! -x "$developer_dir/usr/bin/xcodebuild" ]]; then
+            echo 'A full Xcode installation is required for packaging.' >&2
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$developer_dir" xcodebuild -version
+
       - name: Add Homebrew tools to PATH
         run: echo /opt/homebrew/bin >> "$GITHUB_PATH"
 

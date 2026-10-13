@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Media Shuttle
+Comment=Verified camera-card ingest for Linux
+Exec=media-shuttle
+Icon=media-shuttle
+Terminal=false
+Categories=Graphics;Photography;Utility;
+StartupNotify=true

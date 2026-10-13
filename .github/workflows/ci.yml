@@ -82,5 +82,54 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Select full Xcode
+        run: |
+          developer_dir=/Applications/Xcode.app/Contents/Developer
+          if [[ ! -x "$developer_dir/usr/bin/xcodebuild" ]]; then
+            developer_dir="$(find /Applications -maxdepth 3 -path '*/Xcode*.app/Contents/Developer' -type d -print -quit)"
+          fi
+          if [[ -z "$developer_dir" || ! -x "$developer_dir/usr/bin/xcodebuild" ]]; then
+            echo 'A full Xcode installation is required for XCTest.' >&2
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$developer_dir" xcodebuild -version
+
       - name: Run safety suite
         run: swift test --package-path macos --scratch-path "$RUNNER_TEMP/media-shuttle-tests"
+
+  linux:
+    name: Linux core tests and GTK smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install GTK runtime and virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi gir1.2-gtk-3.0 python3-gi-cairo python3-cairo xvfb
+
+      - name: Run safety suite
+        run: PYTHONPATH=linux /usr/bin/python3 -m unittest discover -s linux/tests -v
+
+      - name: Start native GTK window
+        run: |
+          xvfb-run -a env PYTHONPATH=linux /usr/bin/python3 - <<'PY'
+          from gi.repository import GLib
+          from media_shuttle.app import ShuttleApplication
+
+          app = ShuttleApplication()
+          created = []
+          def verify_window():
+              window = app.get_active_window()
+              created.append(window is not None and window.get_titlebar() is None and window.get_decorated())
+              app.quit()
+              return False
+          GLib.timeout_add_seconds(2, verify_window)
+          result = app.run([])
+          if not created or not created[0]:
+              raise SystemExit("GTK window failed to open with native window decorations")
+          raise SystemExit(result)
+          PY

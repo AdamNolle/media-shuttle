@@ -1,6 +1,6 @@
 # Media Shuttle
 
-**Verified camera-card ingest for macOS and Windows.**
+**Verified camera-card ingest for macOS, Windows, and Linux.**
 
 Media Shuttle sorts photos and videos into a predictable folder layout, checks every copy with SHA-256, and keeps card erase locked until the source and destination still match.
 
@@ -10,6 +10,7 @@ Media Shuttle sorts photos and videos into a predictable folder layout, checks e
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?style=flat-square&logo=apple)](#download)
 [![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=flat-square&logo=windows&logoColor=white)](#download)
+[![Linux GTK 3](https://img.shields.io/badge/Linux-GTK%203-FCC624?style=flat-square&logo=linux&logoColor=black)](#build)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white)](#build)
 [![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#build)
 [![MIT](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)](LICENSE)
@@ -31,6 +32,7 @@ Get the latest installer and portable build from [GitHub Releases](https://githu
 
 - **Windows:** run `MediaShuttle-Setup-v*-win-x64.exe`, or unzip `MediaShuttle-v*-win-x64.zip`. The build is self-contained; no .NET runtime install is needed.
 - **macOS:** open `MediaShuttle-v*-macOS-universal.dmg` and drag the app to Applications.
+- **Linux:** build from this source tree using the instructions below. A Linux release bundle is not published yet.
 
 Each release includes a platform-specific SHA-256 checksum file. Unsigned Windows builds may show SmartScreen; unsigned macOS community builds may require Control-click → **Open**.
 
@@ -57,9 +59,24 @@ swift test --package-path macos --scratch-path /tmp/media-shuttle-tests
 ./macos/scripts/package-macos.sh 0.1.2
 ```
 
+### Linux
+
+The Linux app is written for GTK 3 with PyGObject and uses the system Python 3, GTK, Cairo bindings, and desktop services. On Ubuntu or Debian, install `python3-gi`, `gir1.2-gtk-3.0`, `python3-gi-cairo`, and `python3-cairo` from your distribution. Other distributions provide equivalent GTK 3 introspection and Cairo packages. Run it directly:
+
+```bash
+./linux/media-shuttle
+PYTHONPATH=linux python3 -m unittest discover -s linux/tests -v
+```
+
+For a rootless desktop installation, run `./linux/install.sh`. It installs the app and icon under your XDG user data directory and links the launcher at `~/.local/bin/media-shuttle`. The desktop environment draws the window title bar and controls; the app retains its dark status row beneath them. No .NET or Swift runtime is required on Linux.
+
+![Media Shuttle on Linux with native Openbox window controls](docs/linux-preview.png)
+
+Automatic card detection uses mounted camera volumes containing `DCIM`, `M4ROOT`, or `PRIVATE`; a source folder can also be selected manually. Erase is limited to a removable mounted volume root. The Linux app checks the source and destination again with SHA-256 before deleting card content and preserves known system-managed root entries. A manually selected folder can transfer and verify, but cannot be erased. Linux desktop distributions differ in GTK theme, fonts, window decorations, mount permissions, and packaging, so visual output can vary slightly even though the app body uses the same dimensions, colors, and artwork.
+
 ## CI and releases
 
-GitHub Actions runs Windows and macOS safety checks on pushes and pull requests using the personal runners. Pull requests from forks use GitHub-hosted runners for isolation. Tagged Windows releases run on Adlon, while macOS releases run on the Mac runner. Both release workflows test and attach their packages to the same GitHub release.
+GitHub Actions runs Windows, macOS, and Linux safety checks on pushes and pull requests. Linux CI also starts the GTK window in a virtual display. Pull requests from forks use GitHub-hosted runners for isolation. Tagged Windows releases run on Adlon, while macOS releases run on the Mac runner. Both release workflows test and attach their packages to the same GitHub release.
 
 ## Privacy
 
