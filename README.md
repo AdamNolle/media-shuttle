@@ -1,6 +1,6 @@
 # Media Shuttle
 
-**Verified camera-card ingest for macOS and Windows.**
+**Verified camera-card ingest for Linux, macOS, and Windows.**
 
 Media Shuttle sorts photos and videos into a predictable folder layout, checks every copy with SHA-256, and keeps card erase locked until the source and destination still match.
 
@@ -8,8 +8,10 @@ Media Shuttle sorts photos and videos into a predictable folder layout, checks e
   <img src="docs/screenshot.png" alt="Media Shuttle showing a verified transfer" width="900">
 </div>
 
+[![Linux GTK4](https://img.shields.io/badge/Linux-GTK4%2FCairo-E95420?style=flat-square&logo=linux&logoColor=white)](#linux)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?style=flat-square&logo=apple)](#download)
 [![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=flat-square&logo=windows&logoColor=white)](#download)
+[![C11](https://img.shields.io/badge/C-11-A8B9CC?style=flat-square&logo=c&logoColor=white)](#linux)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white)](#build)
 [![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#build)
 [![MIT](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)](LICENSE)
@@ -21,7 +23,7 @@ Media Shuttle sorts photos and videos into a predictable folder layout, checks e
 - Writes to a temporary file, hashes the card copy and destination copy independently, and publishes only when they match.
 - Reuses identical files already at the destination and keeps different name collisions.
 - Watches for cards in the background, with optional automatic transfer and native notifications.
-- Opens a camera card folder manually when automatic detection misses it. Use the Source panel, Ctrl+O on Windows, or File → Open Camera Card Folder on macOS.
+- Opens a camera card folder manually when automatic detection misses it. Use the Source panel, Ctrl+O on Linux/Windows, or File → Open Camera Card Folder on macOS.
 
 Erase is available only after a verified transfer. Before deleting, the app rescans the card and verifies every remaining file against its destination copy. Unknown files keep erase locked. Erasing removes user content; it does not format the card. Type `ERASE EVERYTHING` to confirm. Use the camera's Format command when you need a fresh filesystem.
 
@@ -31,10 +33,29 @@ Get the latest installer and portable build from [GitHub Releases](https://githu
 
 - **Windows:** run `MediaShuttle-Setup-v*-win-x64.exe`, or unzip `MediaShuttle-v*-win-x64.zip`. The build is self-contained; no .NET runtime install is needed.
 - **macOS:** open `MediaShuttle-v*-macOS-universal.dmg` and drag the app to Applications.
+- **Linux:** build from source using `make -C linux app`.
 
 Each release includes a platform-specific SHA-256 checksum file. Unsigned Windows builds may show SmartScreen; unsigned macOS community builds may require Control-click → **Open**.
 
 ## Build
+
+### Linux
+
+Requires GTK4, Cairo, Pango, and Fontconfig development libraries.
+
+```bash
+# Build the native Linux application
+make -C linux app
+
+# Run safety test suite (all 45 assertions)
+make -C linux tests
+linux/build/core-tests
+
+# Run application
+./linux/build/media-shuttle
+```
+
+See [linux/README.md](linux/README.md) for full Linux development details.
 
 ### Windows
 
